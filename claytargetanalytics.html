@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>ClayTarget — Shooter Analytics</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;800&display=swap');
+
+:root {
+  --bg:#080c10; --panel:#0d1520; --border:#1a2a3a;
+  --accent:#00e5ff; --hit:#00ff88; --miss:#ff3355;
+  --gold:#ffd700; --warn:#ff8c00; --text:#c8dde8; --dim:#4a6a7a;
+  --card:#0b1825;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{overflow-x:hidden}
+body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,229,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,0.02) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+
+/* ── Header ── */
+header{position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:var(--panel);border-bottom:2px solid var(--accent);flex-wrap:wrap;gap:10px}
+.logo{display:flex;align-items:center;gap:12px}
+.logo-icon{width:42px;height:42px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 0 20px rgba(0,229,255,0.5);animation:glow 2s ease-in-out infinite}
+@keyframes glow{0%,100%{box-shadow:0 0 20px rgba(0,229,255,0.5)}50%{box-shadow:0 0 35px rgba(0,229,255,0.9)}}
+.logo h1{font-family:'Rajdhani',sans-serif;font-size:24px;font-weight:700;color:white;letter-spacing:2px}
+.logo-sub{font-size:11px;color:var(--accent);letter-spacing:3px;font-family:'Share Tech Mono',monospace}
+.header-right{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.hinfo{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--dim)}
+
+/* ── Buttons ── */
+.btn{padding:8px 16px;border:1px solid var(--accent);background:transparent;color:var(--accent);font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;border-radius:3px;transition:all 0.2s}
+.btn:hover{background:rgba(0,229,255,0.1)}
+.btn:disabled{opacity:0.35;cursor:default}
+.btn.active{background:var(--accent);color:#000}
+
+/* ── Page ── */
+.page{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:16px}
+
+/* ── Shooter filter bar ── */
+.filter-bar{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.filter-label{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--dim);letter-spacing:2px;text-transform:uppercase;flex-shrink:0}
+.shooter-pills{display:flex;gap:8px;flex-wrap:wrap;flex:1}
+.pill{padding:6px 14px;border:1px solid var(--border);border-radius:20px;background:rgba(0,0,0,0.3);font-family:'Exo 2',sans-serif;font-size:13px;font-weight:600;color:var(--dim);cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:7px}
+.pill:hover{border-color:rgba(0,229,255,0.4);color:var(--text)}
+.pill.selected{border-color:var(--accent);color:white;background:rgba(0,229,255,0.08)}
+.pill .pill-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.pill .pill-avg{font-family:'Share Tech Mono',monospace;font-size:10px;opacity:0.7}
+
+/* ── Summary strip ── */
+.summary-strip{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.sum-chip{background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:10px 18px;font-family:'Share Tech Mono',monospace;font-size:12px}
+.sum-chip .sv{font-size:22px;color:var(--accent);font-weight:700;display:block;line-height:1.1}
+.sum-chip .sl{color:var(--dim);font-size:10px}
+
+/* ── Loading ── */
+#loadingWrap{text-align:center;padding:60px 20px}
+.spinner{width:48px;height:48px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 20px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.load-label{font-family:'Share Tech Mono',monospace;font-size:13px;color:var(--dim)}
+.progress-bar{width:240px;height:3px;background:var(--border);border-radius:2px;margin:12px auto 0;overflow:hidden}
+.progress-fill{height:100%;width:0%;background:var(--accent);transition:width 0.3s}
+
+/* ── Error box with diagnostics ── */
+.err-box{background:rgba(255,51,85,0.06);border:1px solid rgba(255,51,85,0.3);border-radius:8px;padding:24px;margin-bottom:16px}
+.err-title{font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;color:var(--miss);letter-spacing:1px;margin-bottom:12px}
+.err-detail{font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--text);line-height:1.8;margin-bottom:16px}
+.err-hint{font-size:12px;color:var(--dim);line-height:1.7}
+.err-hint strong{color:var(--text)}
+.diag-item{display:flex;align-items:center;gap:8px;font-family:'Share Tech Mono',monospace;font-size:11px;margin-bottom:5px}
+.diag-ok{color:var(--hit)}
+.diag-fail{color:var(--miss)}
+.diag-warn{color:var(--warn)}
+
+.empty-box{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:40px 24px;text-align:center;font-family:'Share Tech Mono',monospace;font-size:13px;color:var(--dim)}
+
+/* ── Section divider ── */
+.divider{font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:700;letter-spacing:4px;text-transform:uppercase;color:var(--accent);border-left:4px solid var(--accent);padding-left:12px;margin:20px 0 14px}
+
+/* ── Leaderboard ── */
+.lb-wrap{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:16px}
+.lb-head{padding:14px 18px;background:rgba(0,0,0,0.2);border-bottom:1px solid var(--border);font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--accent)}
+.lb-table{width:100%;border-collapse:collapse;font-size:13px}
+.lb-table th{padding:8px 14px;text-align:left;font-family:'Share Tech Mono',monospace;font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--dim);border-bottom:1px solid var(--border)}
+.lb-table th.rc{text-align:right}
+.lb-table td{padding:10px 14px;border-bottom:1px solid rgba(26,42,58,0.5);font-family:'Share Tech Mono',monospace;font-size:12px;vertical-align:middle}
+.lb-table td.rc{text-align:right}
+.lb-table tbody tr:last-child td{border-bottom:none}
+.lb-table tbody tr:hover td{background:rgba(0,229,255,0.03)}
+.lb-table tbody tr.dimmed td{opacity:0.25}
+.lb-name{font-family:'Exo 2',sans-serif;font-weight:600;color:white;font-size:13px}
+.lb-bar-track{background:rgba(255,255,255,0.05);border-radius:4px;height:6px;width:100px}
+.lb-bar-fill{height:100%;border-radius:4px}
+
+/* ── Cards ── */
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:16px}
+.shooter-card{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;transition:border-color 0.2s,opacity 0.3s}
+.shooter-card:hover{border-color:rgba(0,229,255,0.3)}
+.shooter-card.dimmed{opacity:0.2;pointer-events:none}
+.card-header{display:flex;align-items:center;gap:14px;padding:16px 18px 14px;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.2)}
+.card-avatar{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:800;color:#000;flex-shrink:0}
+.card-name{font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:white;letter-spacing:1px}
+.card-meta{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--dim);margin-top:2px}
+.trend-pill{margin-left:auto;padding:5px 12px;border-radius:20px;font-family:'Share Tech Mono',monospace;font-size:12px;font-weight:700;flex-shrink:0}
+.trend-up{background:rgba(0,255,136,0.12);color:var(--hit);border:1px solid rgba(0,255,136,0.3)}
+.trend-down{background:rgba(255,51,85,0.12);color:var(--miss);border:1px solid rgba(255,51,85,0.3)}
+.trend-flat{background:rgba(0,229,255,0.1);color:var(--accent);border:1px solid rgba(0,229,255,0.2)}
+
+.stat-row{display:flex;border-bottom:1px solid var(--border)}
+.stat-cell{flex:1;padding:12px 8px;text-align:center;border-right:1px solid var(--border)}
+.stat-cell:last-child{border-right:none}
+.stat-val{font-family:'Share Tech Mono',monospace;font-size:19px;font-weight:700;color:white;display:block}
+.stat-lbl{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--dim);letter-spacing:1px;text-transform:uppercase;margin-top:2px}
+
+.sec{font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--dim);padding:12px 18px 8px}
+
+/* Station bars */
+.station-bars{padding:0 18px 14px}
+.sbar-row{display:flex;align-items:center;gap:10px;margin-bottom:7px}
+.sbar-label{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--dim);width:22px;flex-shrink:0}
+.sbar-track{flex:1;height:14px;background:rgba(255,255,255,0.05);border-radius:7px;overflow:hidden}
+.sbar-fill{height:100%;border-radius:7px;width:0%;transition:width 0.7s cubic-bezier(0.4,0,0.2,1)}
+.sbar-pct{font-family:'Share Tech Mono',monospace;font-size:11px;width:36px;text-align:right;flex-shrink:0}
+.sbar-flag{font-family:'Share Tech Mono',monospace;font-size:10px;width:80px;flex-shrink:0}
+.flag-great{color:var(--hit)} .flag-warn{color:var(--warn)} .flag-weak{color:var(--miss)} .flag-ok{color:var(--dim)}
+.reg-badge{display:inline-block;font-size:9px;padding:1px 5px;border-radius:3px;font-family:'Share Tech Mono',monospace;font-weight:700;margin-left:4px;vertical-align:middle}
+.reg-worse{background:rgba(255,51,85,0.2);color:var(--miss);border:1px solid rgba(255,51,85,0.3)}
+.reg-better{background:rgba(0,255,136,0.15);color:var(--hit);border:1px solid rgba(0,255,136,0.3)}
+
+/* Trend chart */
+.trend-section{padding:0 18px 14px}
+.trend-wrap{background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:6px;padding:10px 14px}
+.trend-footer{display:flex;align-items:center;justify-content:space-between;margin-top:6px;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--dim)}
+.delta-pos{color:var(--hit);font-weight:700} .delta-neg{color:var(--miss);font-weight:700} .delta-neu{color:var(--accent);font-weight:700}
+
+/* History dots */
+.history-section{padding:0 18px 14px}
+.history-dots{display:flex;gap:6px;flex-wrap:wrap}
+.hdot{display:flex;flex-direction:column;align-items:center;gap:3px}
+.hdot-score{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Share Tech Mono',monospace;font-size:11px;font-weight:700;border:1px solid var(--border)}
+.hdot-date{font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--dim)}
+.sc-great{background:rgba(0,255,136,0.2);color:var(--hit);border-color:rgba(0,255,136,0.4)}
+.sc-good{background:rgba(255,215,0,0.15);color:var(--gold);border-color:rgba(255,215,0,0.35)}
+.sc-poor{background:rgba(255,51,85,0.15);color:var(--miss);border-color:rgba(255,51,85,0.3)}
+
+/* Recs */
+.recs{margin:0 18px 16px;background:rgba(0,0,0,0.25);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:0 6px 6px 0;padding:12px 14px}
+.rec-title{font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
+.rec-item{display:flex;align-items:flex-start;gap:8px;margin-bottom:6px;font-size:12px;color:var(--text);line-height:1.5}
+.rec-item:last-child{margin-bottom:0}
+.rec-icon{flex-shrink:0;font-size:13px}
+
+@media(max-width:600px){
+  .cards-grid{grid-template-columns:1fr}
+  header{padding:12px 14px}
+  .page{padding:10px}
+  .lb-table th:nth-child(n+5),.lb-table td:nth-child(n+5){display:none}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">📊</div>
+    <div>
+      <h1>CLAY<span style="color:var(--accent)">TARGET</span></h1>
+      <div class="logo-sub">Shooter Analytics</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="hinfo" id="lastRefresh"></span>
+    <button class="btn" id="refreshBtn" onclick="init()">↺ Refresh</button>
+  </div>
+</header>
+
+<div class="page">
+
+  <!-- Loading -->
+  <div id="loadingWrap">
+    <div class="spinner"></div>
+    <div class="load-label" id="loadLabel">Connecting to GitHub...</div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+  </div>
+
+  <!-- Error diagnostics -->
+  <div id="errorWrap" style="display:none"></div>
+
+  <!-- Main content (hidden until loaded) -->
+  <div id="mainContent" style="display:none">
+
+    <!-- Shooter filter pills -->
+    <div class="filter-bar" id="filterBar" style="display:none">
+      <span class="filter-label">Shooter</span>
+      <div class="shooter-pills" id="shooterPills"></div>
+    </div>
+
+    <!-- Summary strip -->
+    <div class="summary-strip" id="summaryStrip"></div>
+
+    <!-- Leaderboard -->
+    <div class="divider">🏆 All-Time Leaderboard</div>
+    <div id="leaderboardWrap"></div>
+
+    <!-- Cards -->
+    <div class="divider">📋 Shooter Report Cards</div>
+    <div class="cards-grid" id="cardsGrid"></div>
+
+  </div>
+</div>
+
+<script>
+const WORKER_URL = 'https://clayai-roster.mario-parisi.workers.dev';
+
+// Global state
+let allRounds = [];
+let allShooters = {};
+let selectedShooter = 'ALL';
+
+// ── Boot ───────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', init);
+
+async function init() {
+  document.getElementById('refreshBtn').disabled = true;
+  show('loadingWrap'); hide('errorWrap'); hide('mainContent');
+  setProgress(0, 'Connecting to GitHub...');
+
+  try {
+    allRounds = await loadAllReports();
+  } catch(e) {
+    showDiagnosticError(e);
+    document.getElementById('refreshBtn').disabled = false;
+    return;
+  }
+
+  document.getElementById('lastRefresh').textContent =
+    'Updated ' + new Date().toLocaleTimeString();
+  document.getElementById('refreshBtn').disabled = false;
+  hide('loadingWrap');
+
+  if (!allRounds.length) {
+    show('mainContent');
+    document.getElementById('cardsGrid').innerHTML =
+      '<div class="empty-box" style="grid-column:1/-1">📂 No reports found in <strong>reports/</strong> yet.<br><br>Complete a round in the scoring app — it will push here automatically.</div>';
+    return;
+  }
+
+  allShooters = aggregateShooters(allRounds);
+  selectedShooter = 'ALL';
+
+  buildFilterPills();
+  render();
+  show('mainContent');
+}
+
+// ── Data loading ───────────────────────────────────────────
+async function loadAllReports() {
+  // 1. List directory
+  setProgress(5, 'Fetching report list...');
+  let dirRes;
+  try {
+    dirRes = await fetch(WORKER_URL + '?path=reports', { method: 'GET' });
+  } catch(e) {
+    throw Object.assign(new Error('Network error — could not reach the worker'), {
+      type: 'network', detail: e.message
+    });
+  }
+
+  if (!dirRes.ok) {
+    const body = await dirRes.json().catch(() => ({}));
+    const msg = body.message || ('HTTP ' + dirRes.status);
+    if (dirRes.status === 404) {
+      throw Object.assign(
+        new Error('The reports/ folder does not exist in the repo yet'),
+        { type: 'not_found', detail: 'GitHub returned 404. The folder is created automatically when the first round finishes.' }
+      );
+    }
+    throw Object.assign(new Error('GitHub error: ' + msg), { type: 'github', detail: JSON.stringify(body) });
+  }
+
+  const dirData = await dirRes.json();
+
+  if (!Array.isArray(dirData)) {
+    // GitHub returned an object — could be an error response or a file
+    const msg = dirData.message || 'Unexpected response format';
+    throw Object.assign(new Error(msg), { type: 'format', detail: JSON.stringify(dirData).slice(0, 200) });
+  }
+
+  const files = dirData.filter(f => f.type === 'file' && f.name.endsWith('.json'));
+  if (!files.length) return [];
+
+  // 2. Fetch each file
+  const rounds = [];
+  for (let i = 0; i < files.length; i++) {
+    setProgress(
+      10 + Math.round((i / files.length) * 88),
+      `Loading file ${i + 1} of ${files.length}…`
+    );
+    try {
+      const res = await fetch(WORKER_URL + '?path=' + encodeURIComponent(files[i].path));
+      if (!res.ok) { console.warn('Skip', files[i].name, res.status); continue; }
+      const json = await res.json();
+      if (!json.content) { console.warn('No content', files[i].name); continue; }
+      const parsed = JSON.parse(atob(json.content.replace(/\n/g, '')));
+      parsed._ts = parsed.id || extractTs(files[i].name);
+      rounds.push(parsed);
+    } catch(e) {
+      console.warn('Parse error', files[i].name, e.message);
+    }
+  }
+  setProgress(100, 'Done');
+  rounds.sort((a, b) => a._ts - b._ts);
+  return rounds;
+}
+
+function extractTs(name) {
+  const m = name.match(/(\d{8})_(\d{6})/);
+  if (m) {
+    const [, d, t] = m;
+    return +new Date(
+      `${d.slice(0,4)}-${d.slice(4,6)}-${d.slice(6,8)}T${t.slice(0,2)}:${t.slice(2,4)}:${t.slice(4,6)}`
+    ) || 0;
+  }
+  return 0;
+}
+
+// ── Error display ──────────────────────────────────────────
+function showDiagnosticError(e) {
+  hide('loadingWrap');
+  show('errorWrap');
+
+  const type = e.type || 'unknown';
+  const workerOk = type !== 'network';
+
+  const diags = [
+    { ok: workerOk, label: 'Worker reachable: ' + WORKER_URL },
+    { ok: type !== 'not_found', label: 'reports/ folder exists in repo' },
+    { ok: type !== 'format',    label: 'Response is valid JSON array' },
+    { ok: type !== 'github',    label: 'GitHub API authenticated' },
+  ];
+
+  const diagHTML = diags.map(d =>
+    `<div class="diag-item">
+      <span class="${d.ok ? 'diag-ok' : 'diag-fail'}">${d.ok ? '✓' : '✗'}</span>
+      <span>${d.label}</span>
+    </div>`
+  ).join('');
+
+  let hint = '';
+  if (type === 'network') {
+    hint = `<strong>Likely cause:</strong> The Cloudflare Worker URL is wrong or the worker is not deployed.<br>
+            Check that <code>${WORKER_URL}</code> is your live worker URL.`;
+  } else if (type === 'not_found') {
+    hint = `<strong>Likely cause:</strong> No rounds have been pushed yet, so the <code>reports/</code> folder doesn't exist.<br>
+            Complete a round in the scoring app — it will create the folder automatically.`;
+  } else if (type === 'github') {
+    hint = `<strong>Likely cause:</strong> The GitHub token in your worker is missing or expired.<br>
+            Update <code>GITHUB_TOKEN</code> in your Cloudflare Worker dashboard.`;
+  } else if (type === 'format') {
+    hint = `<strong>Likely cause:</strong> The worker returned an unexpected format.<br>
+            Make sure you have deployed the latest worker that supports <code>?path=</code> query params.`;
+  } else {
+    hint = `<strong>Error:</strong> ${e.message}`;
+  }
+
+  document.getElementById('errorWrap').innerHTML = `
+    <div class="err-box">
+      <div class="err-title">⚠ Could Not Load Data</div>
+      <div class="err-detail">${e.message}${e.detail ? '<br><span style="color:var(--dim);font-size:11px">' + e.detail + '</span>' : ''}</div>
+      <div style="margin-bottom:14px">${diagHTML}</div>
+      <div class="err-hint">${hint}</div>
+      <button class="btn" style="margin-top:16px" onclick="init()">↺ Try Again</button>
+    </div>`;
+}
+
+// ── Aggregation ────────────────────────────────────────────
+function aggregateShooters(rounds) {
+  const map = {};
+  for (const round of rounds) {
+    for (const result of (round.results || [])) {
+      const name = result.name;
+      if (!map[name]) map[name] = { name, color: result.color || '#00e5ff', rounds: [] };
+      map[name].rounds.push({
+        ts: round._ts,
+        score: result.hits,
+        pct: result.pct || Math.round(result.hits / 25 * 100),
+        stationScores: result.stationScores || {},
+        rank: result.rank
+      });
+    }
+  }
+  for (const name in map) {
+    map[name].rounds.sort((a, b) => a.ts - b.ts);
+    computeStats(map[name]);
+  }
+  return map;
+}
+
+function computeStats(s) {
+  const scores = s.rounds.map(r => r.score);
+  s.avg = avg(scores);
+  s.best = Math.max(...scores);
+  s.worst = Math.min(...scores);
+  s.totalRounds = s.rounds.length;
+  s.stdev = stdev(scores);
+
+  // Recency-weighted avg (45-day half-life)
+  const now = Date.now(), hl = 45 * 86400000;
+  let wSum = 0, wScoreSum = 0;
+  for (const r of s.rounds) {
+    const w = Math.pow(0.5, (now - r.ts) / hl);
+    wSum += w; wScoreSum += r.score * w;
+  }
+  s.weightedAvg = wSum > 0 ? wScoreSum / wSum : s.avg;
+
+  // Trend
+  const half = Math.max(1, Math.floor(s.rounds.length / 3));
+  s.earlyAvg = avg(scores.slice(0, half));
+  s.recentAvg = avg(scores.slice(-half));
+  s.delta = s.recentAvg - s.earlyAvg;
+  s.trend = s.rounds.length < 3 ? 'flat' : s.delta > 1 ? 'up' : s.delta < -1 ? 'down' : 'flat';
+
+  // Station stats
+  s.stationStats = {};
+  for (let n = 1; n <= 5; n++) {
+    const shots = s.rounds.flatMap(r => r.stationScores[n] || r.stationScores[String(n)] || []);
+    const hits = shots.filter(Boolean).length;
+    s.stationStats[n] = { shots: shots.length, hits, pct: shots.length ? Math.round(hits / shots.length * 100) : null };
+  }
+
+  // Station trend (first half vs second half)
+  s.stationTrend = {};
+  if (s.rounds.length >= 4) {
+    const mid = Math.floor(s.rounds.length / 2);
+    for (let n = 1; n <= 5; n++) {
+      const early = s.rounds.slice(0, mid).flatMap(r => r.stationScores[n] || r.stationScores[String(n)] || []);
+      const late  = s.rounds.slice(mid).flatMap(r  => r.stationScores[n] || r.stationScores[String(n)] || []);
+      const ep = early.length ? early.filter(Boolean).length / early.length * 100 : null;
+      const lp = late.length  ? late.filter(Boolean).length  / late.length  * 100 : null;
+      if (ep !== null && lp !== null) s.stationTrend[n] = lp - ep;
+    }
+  }
+}
+
+// ── Filter pills ───────────────────────────────────────────
+function buildFilterPills() {
+  const bar = document.getElementById('filterBar');
+  const container = document.getElementById('shooterPills');
+  const shooters = Object.values(allShooters)
+    .sort((a, b) => b.weightedAvg - a.weightedAvg);
+
+  if (shooters.length <= 1) { bar.style.display = 'none'; return; }
+  bar.style.display = 'flex';
+
+  let html = `<div class="pill selected" data-name="ALL" onclick="selectShooter('ALL')">
+    <span style="font-size:12px">👥</span> All Shooters
+  </div>`;
+
+  for (const s of shooters) {
+    html += `<div class="pill" data-name="${s.name}" onclick="selectShooter('${s.name.replace(/'/g,"\\'")}')">
+      <div class="pill-dot" style="background:${s.color}"></div>
+      ${s.name}
+      <span class="pill-avg">${s.avg.toFixed(1)}</span>
+    </div>`;
+  }
+  container.innerHTML = html;
+}
+
+function selectShooter(name) {
+  selectedShooter = name;
+  document.querySelectorAll('.pill').forEach(p => {
+    p.classList.toggle('selected', p.dataset.name === name);
+  });
+  render();
+}
+
+// ── Main render ────────────────────────────────────────────
+function render() {
+  const shooters = Object.values(allShooters)
+    .sort((a, b) => b.weightedAvg - a.weightedAvg);
+
+  const filtered = selectedShooter === 'ALL'
+    ? shooters
+    : shooters.filter(s => s.name === selectedShooter);
+
+  // Summary strip
+  const visibleRounds = selectedShooter === 'ALL'
+    ? allRounds
+    : allRounds.filter(r => r.results?.some(res => res.name === selectedShooter));
+  const dateRange = visibleRounds.length > 1
+    ? fmtDate(visibleRounds[0]._ts) + ' – ' + fmtDate(visibleRounds[visibleRounds.length-1]._ts)
+    : visibleRounds.length ? fmtDate(visibleRounds[0]._ts) : '—';
+
+  let summaryHTML = chip(visibleRounds.length, 'Rounds');
+  if (selectedShooter === 'ALL') {
+    summaryHTML += chip(shooters.length, 'Shooters');
+    const leader = shooters[0];
+    if (leader) summaryHTML += chip(leader.name.split(' ')[0], 'Leader');
+  } else {
+    const s = allShooters[selectedShooter];
+    if (s) {
+      summaryHTML += chip(s.avg.toFixed(1) + '/25', 'Overall Avg');
+      summaryHTML += chip(s.best + '/25', 'Best Round');
+      summaryHTML += chip(s.weightedAvg.toFixed(1) + '/25', 'Recent Form');
+    }
+  }
+  summaryHTML += chip(dateRange, 'Date Range');
+  document.getElementById('summaryStrip').innerHTML = summaryHTML;
+
+  // Leaderboard
+  document.getElementById('leaderboardWrap').innerHTML = renderLeaderboard(shooters);
+
+  // Cards
+  const grid = document.getElementById('cardsGrid');
+  grid.innerHTML = filtered.map(s => renderCard(s)).join('');
+
+  // Dim non-selected cards in ALL view when a card is highlighted
+  // (handled by .dimmed class set on click later)
+
+  // Animate bars
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.sbar-fill').forEach(el => {
+      el.style.width = el.dataset.pct + '%';
+    });
+  });
+}
+
+function chip(val, label) {
+  return `<div class="sum-chip"><span class="sv">${val}</span><span class="sl">${label}</span></div>`;
+}
+
+// ── Leaderboard ────────────────────────────────────────────
+function renderLeaderboard(shooters) {
+  const medals = ['🥇','🥈','🥉'];
+  let html = '<div class="lb-wrap"><div class="lb-head">📈 Ranked by Recency-Weighted Average</div>';
+  html += '<table class="lb-table"><thead><tr>';
+  html += '<th></th><th>Shooter</th><th class="rc">Wtd Avg</th><th class="rc">Avg</th><th class="rc">Best</th><th class="rc">Rounds</th><th class="rc">Trend</th><th></th>';
+  html += '</tr></thead><tbody>';
+
+  for (let i = 0; i < shooters.length; i++) {
+    const s = shooters[i];
+    const isDimmed = selectedShooter !== 'ALL' && s.name !== selectedShooter;
+    const wAvg = s.weightedAvg.toFixed(1);
+    const barPct = Math.round(s.weightedAvg / 25 * 100);
+    const barColor = barPct >= 80 ? 'var(--hit)' : barPct >= 60 ? 'var(--gold)' : 'var(--miss)';
+    const trendSym = s.trend === 'up' ? '↑' : s.trend === 'down' ? '↓' : '→';
+    const trendCol = s.trend === 'up' ? 'var(--hit)' : s.trend === 'down' ? 'var(--miss)' : 'var(--accent)';
+
+    html += `<tr class="${isDimmed ? 'dimmed' : ''}" onclick="selectShooter('${s.name.replace(/'/g,"\\'")}');" style="cursor:pointer">
+      <td style="font-size:16px;width:28px">${medals[i] || (i+1)+'.'}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:26px;height:26px;border-radius:50%;background:${s.color};display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:#000;flex-shrink:0">${s.name.charAt(0)}</div>
+          <span class="lb-name">${s.name}</span>
+        </div>
+      </td>
+      <td class="rc" style="color:${s.color};font-weight:700">${wAvg}</td>
+      <td class="rc">${s.avg.toFixed(1)}</td>
+      <td class="rc" style="color:var(--hit)">${s.best}</td>
+      <td class="rc">${s.totalRounds}</td>
+      <td class="rc" style="color:${trendCol};font-weight:700">${trendSym}</td>
+      <td><div class="lb-bar-track"><div class="lb-bar-fill" style="width:${barPct}%;background:${barColor}"></div></div></td>
+    </tr>`;
+  }
+  html += '</tbody></table></div>';
+
+  // "Showing all" note when filtered
+  if (selectedShooter !== 'ALL') {
+    html += `<div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--dim);text-align:right;margin-top:6px">
+      Click a row to focus · <span style="color:var(--accent);cursor:pointer" onclick="selectShooter('ALL')">Show all ↺</span>
+    </div>`;
+  }
+
+  return html;
+}
+
+// ── Shooter card ───────────────────────────────────────────
+function renderCard(s) {
+  const color = s.color || '#00e5ff';
+  const trendLabel = s.trend === 'up' ? '↑ IMPROVING' : s.trend === 'down' ? '↓ DECLINING' : '→ CONSISTENT';
+  const trendClass = 'trend-' + s.trend;
+  const dateRange = s.rounds.length > 1
+    ? fmtDate(s.rounds[0].ts) + ' – ' + fmtDate(s.rounds[s.rounds.length-1].ts)
+    : fmtDate(s.rounds[0].ts);
+  const avgColor = s.avg >= 20 ? 'var(--hit)' : s.avg >= 15 ? 'var(--gold)' : 'var(--miss)';
+
+  let html = `<div class="shooter-card">`;
+
+  // Header
+  html += `<div class="card-header">
+    <div class="card-avatar" style="background:${color}">${s.name.charAt(0)}</div>
+    <div>
+      <div class="card-name">${s.name}</div>
+      <div class="card-meta">${s.totalRounds} round${s.totalRounds > 1 ? 's' : ''} · ${dateRange}</div>
+    </div>
+    ${s.totalRounds >= 3 ? `<div class="trend-pill ${trendClass}">${trendLabel}</div>` : ''}
+  </div>`;
+
+  // Stats row
+  html += `<div class="stat-row">
+    <div class="stat-cell"><span class="stat-val" style="color:${avgColor}">${s.avg.toFixed(1)}</span><span class="stat-lbl">Avg /25</span></div>
+    <div class="stat-cell"><span class="stat-val" style="color:${avgColor}">${s.weightedAvg.toFixed(1)}</span><span class="stat-lbl">Wtd Avg</span></div>
+    <div class="stat-cell"><span class="stat-val" style="color:var(--hit)">${s.best}</span><span class="stat-lbl">Best</span></div>
+    <div class="stat-cell"><span class="stat-val">${s.worst}</span><span class="stat-lbl">Worst</span></div>
+    <div class="stat-cell"><span class="stat-val" style="color:var(--dim)">${s.stdev.toFixed(1)}</span><span class="stat-lbl">Stdev</span></div>
+  </div>`;
+
+  // Stations
+  html += `<div class="sec">Station Breakdown</div><div class="station-bars">`;
+  for (let n = 1; n <= 5; n++) {
+    const st = s.stationStats[n];
+    const tr = s.stationTrend[n];
+    if (!st || st.pct === null) {
+      html += `<div class="sbar-row"><span class="sbar-label">S${n}</span><span style="font-size:11px;color:var(--dim);font-family:'Share Tech Mono',monospace">no data</span></div>`;
+      continue;
+    }
+    const pct = st.pct;
+    const barColor = pct >= 85 ? '#00ff88' : pct >= 70 ? '#ffd700' : '#ff3355';
+    const flagText = pct >= 85 ? '✓ SOLID' : pct >= 70 ? '~ OK' : '⚠ WEAK';
+    const flagClass = pct >= 85 ? 'flag-great' : pct >= 70 ? 'flag-warn' : 'flag-weak';
+    let badge = '';
+    if (tr !== undefined) {
+      if (tr <= -8) badge = `<span class="reg-badge reg-worse">↓${Math.abs(tr).toFixed(0)}%</span>`;
+      else if (tr >= 8) badge = `<span class="reg-badge reg-better">↑${tr.toFixed(0)}%</span>`;
+    }
+    html += `<div class="sbar-row">
+      <span class="sbar-label">S${n}</span>
+      <div class="sbar-track"><div class="sbar-fill" data-pct="${pct}" style="width:0%;background:${barColor}"></div></div>
+      <span class="sbar-pct" style="color:${barColor}">${pct}%</span>
+      <span class="sbar-flag ${flagClass}">${flagText}${badge}</span>
+    </div>`;
+  }
+  html += `</div>`;
+
+  // Trend chart
+  if (s.rounds.length >= 2) {
+    html += `<div class="sec">Score Trend</div>
+    <div class="trend-section">
+      <div class="trend-wrap">
+        ${trendSVG(s.rounds, color)}
+        <div class="trend-footer">
+          <span>${s.rounds.length} rounds · Early: ${s.earlyAvg.toFixed(1)} · Recent: ${s.recentAvg.toFixed(1)}</span>
+          ${s.totalRounds >= 3
+            ? `<span class="${s.delta > 0 ? 'delta-pos' : s.delta < 0 ? 'delta-neg' : 'delta-neu'}">${s.delta > 0 ? '+' : ''}${s.delta.toFixed(1)} pts</span>`
+            : ''}
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // History dots
+  html += `<div class="sec">Round History</div><div class="history-section"><div class="history-dots">`;
+  const recent = s.rounds.slice(-14);
+  for (const r of recent) {
+    const cls = r.score >= 20 ? 'sc-great' : r.score >= 15 ? 'sc-good' : 'sc-poor';
+    html += `<div class="hdot">
+      <div class="hdot-score ${cls}" title="${fmtDate(r.ts)}">${r.score}</div>
+      <div class="hdot-date">${fmtDateShort(r.ts)}</div>
+    </div>`;
+  }
+  if (s.rounds.length > 14) {
+    html += `<div class="hdot"><div class="hdot-score" style="color:var(--dim);font-size:9px;line-height:1.2">+${s.rounds.length - 14}<br>more</div></div>`;
+  }
+  html += `</div></div>`;
+
+  // Recommendations
+  const recs = buildRecs(s);
+  if (recs.length) {
+    html += `<div class="recs">
+      <div class="rec-title">🎯 Practice Focus</div>
+      ${recs.map(r => `<div class="rec-item"><span class="rec-icon">${r.icon}</span><span>${r.text}</span></div>`).join('')}
+    </div>`;
+  }
+
+  html += `</div>`;
+  return html;
+}
+
+// ── Recommendations ────────────────────────────────────────
+function buildRecs(s) {
+  const recs = [];
+  const weak = [1,2,3,4,5]
+    .filter(n => s.stationStats[n]?.pct !== null && s.stationStats[n]?.pct < 75)
+    .sort((a, b) => s.stationStats[a].pct - s.stationStats[b].pct);
+
+  for (const n of weak.slice(0, 2)) {
+    recs.push({ icon: '🔴', text: `Station ${n} is your weakest at ${s.stationStats[n].pct}% — prioritise this in practice.` });
+  }
+
+  const regressions = [1,2,3,4,5].filter(n =>
+    s.stationTrend[n] !== undefined && s.stationTrend[n] <= -10 && !weak.includes(n)
+  );
+  for (const n of regressions) {
+    recs.push({ icon: '⚠️', text: `Station ${n} has dropped ${Math.abs(s.stationTrend[n]).toFixed(0)}% recently — review your technique here.` });
+  }
+
+  if (s.stdev > 4 && s.totalRounds >= 4) {
+    recs.push({ icon: '📊', text: `High variance (±${s.stdev.toFixed(1)} pts). Work on consistency — same pre-shot routine every station.` });
+  }
+
+  if (s.trend === 'down' && s.totalRounds >= 4) {
+    recs.push({ icon: '📉', text: `Scores trending down ${Math.abs(s.delta).toFixed(1)} pts. Consider a fundamentals session.` });
+  } else if (s.trend === 'up' && s.totalRounds >= 4) {
+    recs.push({ icon: '📈', text: `Up ${s.delta.toFixed(1)} pts over your history — keep the same routine going.` });
+  }
+
+  if (!recs.length) {
+    const pcts = [1,2,3,4,5].map(n => s.stationStats[n]?.pct).filter(p => p != null);
+    const minP = pcts.length ? Math.min(...pcts) : 100;
+    recs.push({ icon: '✅', text: `Strong across all stations (lowest: ${minP}%). Aim to push your avg above ${Math.round(s.avg + 1)}.` });
+  }
+  return recs;
+}
+
+// ── SVG sparkline ──────────────────────────────────────────
+function trendSVG(rounds, color) {
+  const scores = rounds.map(r => r.score);
+  const W = 100, H = 50, P = 6;
+  const minS = Math.max(0, Math.min(...scores) - 2);
+  const maxS = Math.min(25, Math.max(...scores) + 2);
+  const range = maxS - minS || 1;
+  const pts = scores.map((s, i) => ({
+    x: scores.length === 1 ? W / 2 : P + (i / (scores.length - 1)) * (W - P * 2),
+    y: P + (1 - (s - minS) / range) * (H - P * 2),
+    s
+  }));
+  const line = pts.map(p => `${p.x},${p.y}`).join(' ');
+  const area = `${pts[0].x},${H} ${line} ${pts[pts.length-1].x},${H}`;
+  const gid = 'g' + Math.random().toString(36).slice(2);
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:60px;display:block" preserveAspectRatio="none">
+    <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${color}" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="${color}" stop-opacity="0.02"/>
+    </linearGradient></defs>
+    <polygon points="${area}" fill="url(#${gid})"/>
+    <polyline points="${line}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    ${pts.map(p => `<circle cx="${p.x}" cy="${p.y}" r="2.5" fill="${color}"/>`).join('')}
+    ${pts.length >= 2 ? `
+      <text x="${pts[0].x}" y="${pts[0].y - 4}" text-anchor="middle" font-family="monospace" font-size="5" fill="${color}" opacity="0.8">${pts[0].s}</text>
+      <text x="${pts[pts.length-1].x}" y="${pts[pts.length-1].y - 4}" text-anchor="middle" font-family="monospace" font-size="5" fill="${color}" opacity="0.8">${pts[pts.length-1].s}</text>
+    ` : ''}
+  </svg>`;
+}
+
+// ── Utilities ──────────────────────────────────────────────
+function avg(a) { return a.length ? a.reduce((s, v) => s + v, 0) / a.length : 0; }
+function stdev(a) {
+  if (a.length < 2) return 0;
+  const m = avg(a);
+  return Math.sqrt(a.reduce((s, v) => s + (v - m) ** 2, 0) / a.length);
+}
+function fmtDate(ts) {
+  if (!ts) return '?';
+  return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+function fmtDateShort(ts) {
+  if (!ts) return '?';
+  return new Date(ts).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' });
+}
+function setProgress(pct, label) {
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('loadLabel').textContent = label;
+}
+function show(id) { document.getElementById(id).style.display = 'block'; }
+function hide(id) { document.getElementById(id).style.display = 'none'; }
+</script>
+</body>
+</html>
