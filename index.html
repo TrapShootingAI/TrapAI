@@ -36,13 +36,16 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
 .ninput{width:100%;background:rgba(0,0,0,0.4);border:1px solid var(--border);border-radius:4px;padding:7px 10px;color:white;font-family:'Exo 2',sans-serif;font-size:14px;outline:none;transition:border-color 0.2s}
 .ninput:focus{border-color:var(--accent)}
 .ninput::placeholder{color:var(--dim)}
-.togrow{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--dim);cursor:pointer;margin-top:8px;user-select:none}
-.tog{width:34px;height:18px;background:var(--border);border-radius:9px;position:relative;transition:background 0.2s;flex-shrink:0}
-.tog.on{background:var(--accent)}
-.tog::after{content:'';position:absolute;width:12px;height:12px;background:white;border-radius:50%;top:3px;left:3px;transition:left 0.2s}
-.tog.on::after{left:19px}
 .start-btn{display:block;width:100%;padding:15px;background:var(--accent);color:#000;border:none;border-radius:6px;font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;letter-spacing:3px;cursor:pointer;transition:all 0.2s;text-transform:uppercase}
 .start-btn:hover{box-shadow:0 0 24px rgba(0,229,255,0.5);transform:translateY(-1px)}
+/* Saved rounds collapsible */
+.saved-toggle{display:flex;align-items:center;justify-content:space-between;width:100%;padding:12px 16px;margin-top:10px;background:rgba(0,0,0,0.25);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:600;letter-spacing:1px;color:var(--dim);transition:all 0.2s;text-transform:uppercase}
+.saved-toggle:hover{border-color:rgba(0,229,255,0.3);color:var(--text)}
+.saved-toggle .arr{font-size:11px;transition:transform 0.25s;display:inline-block;margin-left:6px}
+.saved-toggle.open .arr{transform:rotate(180deg)}
+.saved-badge{background:rgba(0,229,255,0.12);color:var(--accent);border:1px solid rgba(0,229,255,0.2);border-radius:10px;padding:1px 8px;font-size:11px;font-family:'Share Tech Mono',monospace;font-weight:400;letter-spacing:0;margin-left:8px}
+.saved-drawer{display:none;padding-top:8px}
+.saved-drawer.open{display:block}
 .field-view{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-bottom:12px}
 .stn-card{border:2px solid var(--border);border-radius:6px;padding:8px 4px;text-align:center;background:rgba(0,0,0,0.3);transition:all 0.3s;position:relative}
 .stn-card.active{border-color:var(--accent);background:rgba(0,229,255,0.06);box-shadow:0 0 12px rgba(0,229,255,0.15)}
@@ -116,6 +119,9 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
 .si-date{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--dim)}
 .si-shooters{font-size:13px;font-weight:600;color:white;margin:2px 0}
 .si-score{font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--accent)}
+.si-sync{font-size:10px;margin-top:3px;font-family:'Share Tech Mono',monospace}
+.si-sync.ok{color:var(--hit)}
+.si-sync.pend{color:var(--dim)}
 .del-btn{width:28px;height:28px;border-radius:50%;background:transparent;border:1px solid rgba(255,51,85,0.3);color:rgba(255,51,85,0.6);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all 0.2s;flex-shrink:0}
 .del-btn:hover{background:rgba(255,51,85,0.15);border-color:var(--miss);color:var(--miss)}
 .btn{padding:7px 14px;border:1px solid var(--accent);background:transparent;color:var(--accent);font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;border-radius:3px;transition:all 0.2s}
@@ -131,50 +137,16 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
 .mgrid{display:flex;flex-direction:column;gap:2px;width:100%}
 .lc{display:flex;flex-direction:column;gap:2px}
 .rc{display:flex;flex-direction:column;gap:2px}
-
-/* ═══════════════════════════════════════════
-   REPORT — no scroll containers, fits page
-   ═══════════════════════════════════════════ */
-#reportScreen{
-  background:#f2f4f7;
-  min-height:100vh;
-  font-family:Georgia,serif;
-  color:#111;
-}
-.rpt-bar{
-  background:#1a1a2e;
-  padding:12px 24px;
-  display:flex;
-  align-items:center;
-  gap:12px;
-  flex-wrap:wrap;
-  border-bottom:3px solid #00e5ff;
-}
-.rpt-bar-label{color:#00e5ff;font-family:'Share Tech Mono',monospace;font-size:13px;font-weight:600;letter-spacing:1px;flex:1}
-.rpt-btn{padding:8px 18px;border-radius:4px;font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;letter-spacing:1px;cursor:pointer;border:none;transition:all 0.2s}
-.rpt-btn.print{background:#00e5ff;color:#000}
-.rpt-btn.save{background:#00c96e;color:#fff}
-.rpt-btn.newround{background:#333;color:#ccc}
-.rpt-btn:hover{opacity:0.85}
-
-.rpt-card{
-  background:#fff;
-  width:100%;
-  max-width:920px;
-  margin:24px auto;
-  border-radius:10px;
-  box-shadow:0 4px 24px rgba(0,0,0,0.10);
-  overflow:visible;
-}
+#reportScreen{background:#f2f4f7;min-height:100vh;font-family:Georgia,serif;color:#111}
+.rpt-bar{background:#1a1a2e;padding:12px 24px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-bottom:3px solid #00e5ff}
+.rpt-card{background:#fff;width:100%;max-width:920px;margin:24px auto;border-radius:10px;box-shadow:0 4px 24px rgba(0,0,0,0.10);overflow:visible}
 .rpt-body{padding:36px 36px 48px}
-
 .rpt-head{text-align:center;margin-bottom:28px;padding-bottom:18px;border-bottom:3px solid #1a1a2e}
 .rpt-eyebrow{font-size:11px;letter-spacing:5px;text-transform:uppercase;color:#888;margin-bottom:8px;font-family:'Share Tech Mono',monospace}
 .rpt-title{font-family:'Rajdhani',sans-serif;font-size:36px;font-weight:800;color:#1a1a2e;letter-spacing:3px;line-height:1;margin-bottom:8px}
 .rpt-date-line{font-family:'Share Tech Mono',monospace;font-size:13px;color:#777}
 .rpt-meta{display:inline-flex;gap:20px;margin-top:12px;padding:7px 18px;background:#f4f6f8;border-radius:4px;font-family:'Share Tech Mono',monospace;font-size:12px;color:#555;flex-wrap:wrap;justify-content:center}
 .rpt-sec{font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:700;letter-spacing:4px;text-transform:uppercase;color:#1a1a2e;border-left:4px solid #1a1a2e;padding-left:12px;margin:28px 0 14px}
-
 .podium-wrap{display:flex;justify-content:center;align-items:flex-end;gap:16px;padding:24px 20px 0;background:linear-gradient(160deg,#e8ecf3,#d5dae5);border-radius:8px}
 .podium-slot{display:flex;flex-direction:column;align-items:center;gap:4px}
 .podium-names{font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:#1a1a2e;text-align:center;line-height:1.3}
@@ -182,48 +154,17 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
 .podium-pct{font-family:'Share Tech Mono',monospace;font-size:11px;color:#777;margin-bottom:4px}
 .podium-tie{font-size:10px;background:#fff3cd;color:#7a5000;border:1px solid #ffc107;border-radius:10px;padding:2px 8px;font-family:'Share Tech Mono',monospace;font-weight:700;letter-spacing:1px;margin-bottom:4px}
 .podium-bar{border-radius:6px 6px 0 0;display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:800;color:white;letter-spacing:1px;min-width:100px}
-
-.tbl-wrap{
-  border-radius:6px;
-  border:1px solid #dde1e8;
-  margin-bottom:8px;
-  width:100%;
-}
-.rtbl{
-  width:100%;
-  border-collapse:collapse;
-  font-size:13px;
-  table-layout:fixed;
-}
+.tbl-wrap{border-radius:6px;border:1px solid #dde1e8;margin-bottom:8px;width:100%}
+.rtbl{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
 .rtbl thead tr{background:#1a1a2e}
-.rtbl th{
-  color:white;
-  padding:9px 6px;
-  text-align:center;
-  font-family:'Rajdhani',sans-serif;
-  font-size:11px;
-  letter-spacing:1px;
-  text-transform:uppercase;
-  font-weight:600;
-  word-break:break-word;
-}
+.rtbl th{color:white;padding:9px 6px;text-align:center;font-family:'Rajdhani',sans-serif;font-size:11px;letter-spacing:1px;text-transform:uppercase;font-weight:600;word-break:break-word}
 .rtbl th.tl{text-align:left;padding-left:12px}
-.rtbl td{
-  padding:9px 6px;
-  text-align:center;
-  border-bottom:1px solid #eef0f3;
-  font-family:'Share Tech Mono',monospace;
-  font-size:12px;
-  background:#fff;
-  word-break:break-word;
-  overflow-wrap:anywhere;
-}
+.rtbl td{padding:9px 6px;text-align:center;border-bottom:1px solid #eef0f3;font-family:'Share Tech Mono',monospace;font-size:12px;background:#fff;word-break:break-word;overflow-wrap:anywhere}
 .rtbl td.tl{text-align:left;font-family:Georgia,serif;font-weight:bold;padding-left:12px;font-size:13px}
 .rtbl tbody tr:nth-child(even) td{background:#f9fafb}
 .rtbl tbody tr:first-child td{background:#fffdf0}
 .rtbl tbody tr:last-child td{border-bottom:none}
 .stbl thead tr{background:#2d3748}
-
 .r-medal{font-size:16px}
 .r-score{font-size:15px;font-weight:700;color:#1a1a2e}
 .r-pct{display:inline-block;padding:2px 7px;border-radius:12px;font-size:11px;font-weight:700}
@@ -235,14 +176,11 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
 .stn-v.pg{color:#856404}
 .stn-v.pp{color:#721c24}
 .tie-tag{display:inline-block;font-size:9px;background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:3px;padding:1px 5px;font-family:'Share Tech Mono',monospace;vertical-align:middle;margin-left:4px}
-
 .shot-pip{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:middle;margin:1px}
 .shot-pip.h{background:#28a745}
 .shot-pip.m{background:#dc3545}
-
 .tie-box{background:#fffbea;border:1px solid #ffc107;border-radius:6px;padding:12px 16px;margin-top:16px;font-size:13px;color:#7a5c00;line-height:1.6}
 .rpt-footer{margin-top:36px;padding-top:14px;border-top:1px solid #e8eaf0;display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#aaa;font-family:'Share Tech Mono',monospace;flex-wrap:wrap;gap:8px}
-
 @media print{
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   body{background:#fff!important;margin:0;padding:0}
@@ -269,7 +207,6 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
   .rpt-footer{margin-top:20px!important}
   .podium-bar{-webkit-print-color-adjust:exact!important}
 }
-
 @media(max-width:600px){
   .rpt-body{padding:18px 14px 32px}
   .rtbl th,.rtbl td{padding:7px 4px;font-size:10px}
@@ -298,6 +235,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
       <button class="btn d" onclick="resetAll()">⟳ RESET</button>
     </div>
   </header>
+
   <div id="setupScreen">
     <div class="panel">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
@@ -310,11 +248,19 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
       <div id="rosterList" style="display:none;margin-bottom:16px;position:relative;z-index:10"></div>
       <div class="setup-grid" id="setupGrid"></div>
 
-      <div id="savedSection" style="display:none;margin-bottom:16px">
-        <div class="ptitle">📁 Saved Rounds</div>
-        <div id="savedList"></div>
-      </div>
+      <!-- Primary action -->
       <button class="start-btn" onclick="startRound()">🎯 START NEW ROUND</button>
+
+      <!-- Saved rounds — collapsible below start button -->
+      <div id="savedToggleWrap" style="display:none">
+        <button class="saved-toggle" id="savedToggleBtn" onclick="toggleSavedDrawer()">
+          <span>📁 Saved Rounds<span class="saved-badge" id="savedBadge">0</span></span>
+          <span class="arr">▼</span>
+        </button>
+        <div class="saved-drawer" id="savedDrawer">
+          <div id="savedList"></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -335,8 +281,9 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
 
   <!-- Sync indicator -->
   <div id="syncStatus" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:var(--accent);font-family:'Share Tech Mono',monospace;font-size:13px;padding:10px 20px;border-radius:20px;border:1px solid var(--accent);z-index:400">
-    ⟳ Syncing roster...
+    ⟳ Syncing...
   </div>
+
   <div id="mainScreen">
     <div class="mgrid">
       <div class="lc">
@@ -379,6 +326,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
 </div>
 </div>
 <div id="reportScreen"></div>
+
 <script>
 const COLORS=['#00e5ff','#ff6b35','#a855f7','#22c55e','#f59e0b'];
 const SPS=5,STNS=5;
@@ -387,9 +335,33 @@ let rotation=1,roundShot=1,shooterTurnIdx=0;
 let waitRotate=false,roundDone=false,shootLog=[];
 let activeOrder=[],roundStartTime=null,roundResults=null;
 
-// ── Cloudflare Worker Proxy ───────────────────────────────
+// ── Cloudflare Worker ─────────────────────────────────────
 const WORKER_URL='https://clayai-roster.mario-parisi.workers.dev';
 
+// ── GitHub Report Push ────────────────────────────────────
+// Sends each finished round as reports/round_YYYYMMDD_HHMMSS_<id>.json
+// The worker must support ?path=reports/xxx.json on PUT requests.
+// See the update instructions in the HTML comment at the bottom.
+async function saveReportToGitHub(data){
+  try{
+    const d=new Date(data.id||Date.now());
+    const p=n=>String(n).padStart(2,'0');
+    const fname='round_'
+      +d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())
+      +'_'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds())
+      +'_'+(data.id||Date.now())+'.json';
+    const content=btoa(unescape(encodeURIComponent(JSON.stringify(data,null,2))));
+    const res=await fetch(WORKER_URL+'?path=reports/'+fname,{
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({message:'Add round report '+fname,content})
+    });
+    if(!res.ok){const e=await res.json().catch(()=>({}));console.warn('Report sync failed:',e.message||res.status);return false;}
+    return true;
+  }catch(e){console.warn('Report sync error:',e.message);return false;}
+}
+
+// ── Roster sync ───────────────────────────────────────────
 async function ghFetchRoster(){
   try{
     const res=await fetch(WORKER_URL,{method:'GET'});
@@ -410,11 +382,7 @@ async function ghSaveRoster(roster){
   const body={message:'Update roster',content};
   if(sha)body.sha=sha;
   try{
-    const res=await fetch(WORKER_URL,{
-      method:'PUT',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(body)
-    });
+    const res=await fetch(WORKER_URL,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     if(!res.ok){const e=await res.json();throw new Error(e.message||'save failed');}
     const json=await res.json();
     localStorage.setItem('clayai_roster_sha',json.content.sha);
@@ -425,7 +393,7 @@ async function ghSaveRoster(roster){
   }
 }
 
-// ── Roster ──────────────────────────────────────────────
+// ── Roster UI ─────────────────────────────────────────────
 function toggleRoster(){
   const rl=document.getElementById('rosterList');
   const btn=document.getElementById('rosterToggleBtn');
@@ -433,11 +401,9 @@ function toggleRoster(){
   rl.style.display=visible?'none':'block';
   btn.textContent=visible?'👤 Manage Team':'👤 Hide Team';
 }
-
 function loadRoster(){
   try{return JSON.parse(localStorage.getItem('clayai_roster')||'[]');}catch(e){return [];}
 }
-
 function openAddMember(){
   document.getElementById('mName').value='';
   document.getElementById('mPhone').value='';
@@ -447,8 +413,7 @@ function openAddMember(){
   document.getElementById('memberModal').style.display='flex';
 }
 function openEditMember(idx){
-  const roster=loadRoster();
-  const m=roster[idx];
+  const roster=loadRoster();const m=roster[idx];
   document.getElementById('mName').value=m.name||'';
   document.getElementById('mPhone').value=m.phone||'';
   document.getElementById('mEmail').value=m.email||'';
@@ -456,9 +421,7 @@ function openEditMember(idx){
   document.getElementById('modalTitle').textContent='Edit Member';
   document.getElementById('memberModal').style.display='flex';
 }
-function closeModal(){
-  document.getElementById('memberModal').style.display='none';
-}
+function closeModal(){document.getElementById('memberModal').style.display='none';}
 async function saveMember(){
   const name=document.getElementById('mName').value.trim();
   if(!name){alert('Name is required.');return;}
@@ -466,30 +429,31 @@ async function saveMember(){
   const email=document.getElementById('mEmail').value.trim();
   const idx=parseInt(document.getElementById('mEditIdx').value);
   const roster=loadRoster();
-  if(idx>=0){roster[idx]={name,phone,email};}
-  else{roster.push({name,phone,email});}
-  closeModal();
-  showSyncing(true);
+  if(idx>=0)roster[idx]={name,phone,email};
+  else roster.push({name,phone,email});
+  closeModal();showSyncing(true);
   await ghSaveRoster(roster);
-  showSyncing(false);
-  buildSetup();
+  showSyncing(false);buildSetup();
 }
 async function deleteMember(idx){
-  const roster=loadRoster();
-  const member=roster[idx];
+  const roster=loadRoster();const member=roster[idx];
   if(!member){alert('Member not found.');return;}
   if(!confirm('Delete '+member.name+'?'))return;
-  roster.splice(idx,1);
-  showSyncing(true);
+  roster.splice(idx,1);showSyncing(true);
   await ghSaveRoster(roster);
-  showSyncing(false);
-  buildSetup();
+  showSyncing(false);buildSetup();
+}
+function showSyncing(on){document.getElementById('syncStatus').style.display=on?'block':'none';}
+
+// ── Saved rounds drawer ───────────────────────────────────
+function toggleSavedDrawer(){
+  const drawer=document.getElementById('savedDrawer');
+  const btn=document.getElementById('savedToggleBtn');
+  const open=drawer.classList.toggle('open');
+  btn.classList.toggle('open',open);
 }
 
-function showSyncing(on){
-  document.getElementById('syncStatus').style.display=on?'block':'none';
-}
-
+// ── Setup ─────────────────────────────────────────────────
 async function buildSetup(){
   showSyncing(true);
   const roster=await ghFetchRoster();
@@ -507,83 +471,48 @@ async function buildSetup(){
     roster.forEach(function(m,i){
       const row=document.createElement('div');
       row.style.cssText='display:flex;align-items:center;gap:10px;padding:9px 12px;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:5px;margin-bottom:6px;position:relative;z-index:10;cursor:pointer;transition:background 0.2s,transform 0.25s;';
-
       const avatar=document.createElement('div');
       avatar.style.cssText='width:32px;height:32px;border-radius:50%;background:'+COLORS[i%COLORS.length]+';display:flex;align-items:center;justify-content:center;font-family:\'Rajdhani\',sans-serif;font-size:15px;font-weight:700;color:#000;flex-shrink:0';
       avatar.textContent=m.name.charAt(0);
-
       const info=document.createElement('div');
       info.style.cssText='flex:1';
       info.innerHTML='<div style="font-size:14px;font-weight:600;color:white">'+m.name+'</div>'
         +'<div style="font-size:11px;color:var(--dim);font-family:\'Share Tech Mono\',monospace">'+(m.phone||'no phone')+(m.email?' · '+m.email:'')+'</div>';
-
       const hint=document.createElement('div');
       hint.style.cssText='font-size:9px;color:var(--dim);font-family:\'Share Tech Mono\',monospace;text-align:right;line-height:1.4;flex-shrink:0';
       hint.innerHTML='← delete<br>edit →';
-
-      // Desktop hover buttons
       const btnGroup=document.createElement('div');
-      btnGroup.className='roster-btn-group';
       btnGroup.style.cssText='display:none;gap:6px;flex-shrink:0;';
-
       const editBtn=document.createElement('button');
-      editBtn.className='btn';
-      editBtn.style.cssText='padding:5px 12px;font-size:12px;cursor:pointer;';
-      editBtn.textContent='Edit';
-      editBtn.onclick=function(e){e.stopPropagation();openEditMember(i);};
-
+      editBtn.className='btn';editBtn.style.cssText='padding:5px 12px;font-size:12px;cursor:pointer;';
+      editBtn.textContent='Edit';editBtn.onclick=function(e){e.stopPropagation();openEditMember(i);};
       const delBtn=document.createElement('button');
-      delBtn.className='btn d';
-      delBtn.style.cssText='padding:5px 12px;font-size:12px;cursor:pointer;';
-      delBtn.textContent='Delete';
-      delBtn.onclick=function(e){e.stopPropagation();deleteMember(i);};
-
-      btnGroup.appendChild(editBtn);
-      btnGroup.appendChild(delBtn);
-
-      row.addEventListener('mouseenter',function(){
-        btnGroup.style.display='flex';
-        hint.style.display='none';
-      });
-      row.addEventListener('mouseleave',function(){
-        btnGroup.style.display='none';
-        hint.style.display='block';
-      });
-
-      row.appendChild(avatar);
-      row.appendChild(info);
-      row.appendChild(hint);
-      row.appendChild(btnGroup);
+      delBtn.className='btn d';delBtn.style.cssText='padding:5px 12px;font-size:12px;cursor:pointer;';
+      delBtn.textContent='Delete';delBtn.onclick=function(e){e.stopPropagation();deleteMember(i);};
+      btnGroup.appendChild(editBtn);btnGroup.appendChild(delBtn);
+      row.addEventListener('mouseenter',function(){btnGroup.style.display='flex';hint.style.display='none';});
+      row.addEventListener('mouseleave',function(){btnGroup.style.display='none';hint.style.display='block';});
+      row.appendChild(avatar);row.appendChild(info);row.appendChild(hint);row.appendChild(btnGroup);
       rl.appendChild(row);
-
-      // Swipe handling
       (function(memberIdx){
         let startX=0,startY=0,moved=false;
-        row.addEventListener('touchstart',function(e){
-          startX=e.touches[0].clientX;
-          startY=e.touches[0].clientY;
-          moved=false;
-          row.style.transition='none';
-        },{passive:true});
+        row.addEventListener('touchstart',function(e){startX=e.touches[0].clientX;startY=e.touches[0].clientY;moved=false;row.style.transition='none';},{passive:true});
         row.addEventListener('touchmove',function(e){
-          const dx=e.touches[0].clientX-startX;
-          const dy=e.touches[0].clientY-startY;
+          const dx=e.touches[0].clientX-startX;const dy=e.touches[0].clientY-startY;
           if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>8){
-            moved=true;
-            row.style.transform='translateX('+Math.max(-80,Math.min(80,dx))+'px)';
-            if(dx<-20) row.style.background='rgba(255,51,85,0.25)';
-            else if(dx>20) row.style.background='rgba(0,229,255,0.15)';
+            moved=true;row.style.transform='translateX('+Math.max(-80,Math.min(80,dx))+'px)';
+            if(dx<-20)row.style.background='rgba(255,51,85,0.25)';
+            else if(dx>20)row.style.background='rgba(0,229,255,0.15)';
             else row.style.background='rgba(0,0,0,0.2)';
           }
         },{passive:true});
         row.addEventListener('touchend',function(e){
           const dx=e.changedTouches[0].clientX-startX;
           row.style.transition='transform 0.25s,background 0.25s';
-          row.style.transform='translateX(0)';
-          row.style.background='rgba(0,0,0,0.2)';
+          row.style.transform='translateX(0)';row.style.background='rgba(0,0,0,0.2)';
           if(moved){
-            if(dx<-60){ setTimeout(function(){deleteMember(memberIdx);},250); }
-            else if(dx>60){ setTimeout(function(){openEditMember(memberIdx);},250); }
+            if(dx<-60)setTimeout(function(){deleteMember(memberIdx);},250);
+            else if(dx>60)setTimeout(function(){openEditMember(memberIdx);},250);
           }
         },{passive:true});
       })(i);
@@ -593,8 +522,7 @@ async function buildSetup(){
 
   const g=document.getElementById('setupGrid');g.innerHTML='';
   for(let i=0;i<5;i++){
-    const c=COLORS[i];
-    const d=document.createElement('div');
+    const c=COLORS[i];const d=document.createElement('div');
     d.className='scard on';d.id='sc'+i;
     const options='<option value="">— Empty —</option>'
       +roster.map((m,mi)=>'<option value="'+mi+'">'+m.name+'</option>').join('');
@@ -603,28 +531,22 @@ async function buildSetup(){
       +'<select class="ninput" id="ss'+i+'" style="cursor:pointer">'+options+'</select>';
     g.appendChild(d);
   }
-
   loadSavedRounds();
 }
 
+// ── Round logic ───────────────────────────────────────────
 function startRound(){
-  const roster=loadRoster();
-  shooters=[];
+  const roster=loadRoster();shooters=[];
   for(let i=0;i<5;i++){
-    const sel=document.getElementById('ss'+i);
-    const val=sel?sel.value:'';
-    if(val!==''){
-      const mi=parseInt(val);
-      const m=roster[mi];
-      shooters.push({name:m.name,color:COLORS[i],startStation:i+1,phone:m.phone||'',email:m.email||''});
-    }
+    const sel=document.getElementById('ss'+i);const val=sel?sel.value:'';
+    if(val!==''){const mi=parseInt(val);const m=roster[mi];
+      shooters.push({name:m.name,color:COLORS[i],startStation:i+1,phone:m.phone||'',email:m.email||''});}
   }
   if(!shooters.length){alert('Assign at least 1 shooter to a station!');return;}
   scores={};shootLog=[];
   shooters.forEach((_,si)=>{scores[si]={1:[],2:[],3:[],4:[],5:[]};});
   rotation=1;roundShot=1;shooterTurnIdx=0;waitRotate=false;roundDone=false;roundResults=null;
-  roundStartTime=new Date();
-  buildActiveOrder();
+  roundStartTime=new Date();buildActiveOrder();
   document.getElementById('setupScreen').style.display='none';
   document.getElementById('mainScreen').style.display='block';
   document.getElementById('reportScreen').style.display='none';
@@ -634,14 +556,9 @@ function startRound(){
   document.body.classList.remove('report-mode');
   setupKeys();renderAll();
 }
-
 function buildActiveOrder(){
-  activeOrder=shooters.map((sh,si)=>{
-    const stn=((sh.startStation-1+rotation-1)%STNS)+1;
-    return {si,stn};
-  }).sort((a,b)=>a.stn-b.stn);
+  activeOrder=shooters.map((sh,si)=>{const stn=((sh.startStation-1+rotation-1)%STNS)+1;return {si,stn};}).sort((a,b)=>a.stn-b.stn);
 }
-
 function curTurn(){return activeOrder[shooterTurnIdx];}
 function curShooter(){return shooters[curTurn().si];}
 
@@ -650,8 +567,7 @@ function recordShot(hit){
   const {si,stn}=curTurn();
   scores[si][stn].push(hit);
   shootLog.unshift({name:shooters[si].name,color:shooters[si].color,stn,shotNum:roundShot,hit,time:new Date().toLocaleTimeString()});
-  showFlash(hit);
-  shooterTurnIdx++;
+  showFlash(hit);shooterTurnIdx++;
   if(shooterTurnIdx>=activeOrder.length){
     shooterTurnIdx=0;roundShot++;
     if(roundShot>SPS){
@@ -662,7 +578,6 @@ function recordShot(hit){
   }
   renderAll();
 }
-
 function undoLast(){
   if(waitRotate){
     waitRotate=false;roundShot=SPS;shooterTurnIdx=activeOrder.length-1;
@@ -677,9 +592,7 @@ function undoLast(){
   if(scores[si][stn].length>0){scores[si][stn].pop();shootLog.shift();}
   renderAll();
 }
-
 function doRotate(){rotation++;waitRotate=false;roundShot=1;shooterTurnIdx=0;buildActiveOrder();renderAll();}
-
 function getTotals(){
   return shooters.map((sh,si)=>{
     const h=[1,2,3,4,5].reduce((a,s)=>a+scores[si][s].filter(Boolean).length,0);
@@ -687,13 +600,54 @@ function getTotals(){
   });
 }
 
+// ── Finish & report ───────────────────────────────────────
+async function finishRound(){
+  const totals=getTotals().sort((a,b)=>b.hits-a.hits);
+  let rank=1;
+  const ranked=totals.map((t,i)=>{
+    if(i>0&&totals[i].hits<totals[i-1].hits)rank=i+1;
+    const tiedWith=totals.filter((x,j)=>j!==i&&x.hits===t.hits).map(x=>x.name);
+    const stnScores={};
+    for(let s=1;s<=5;s++)stnScores[s]=[...(scores[t.si][s]||[])];
+    return {si:t.si,name:t.name,color:t.color,hits:t.hits,rank,tiedWith,stnScores};
+  });
+  roundResults=ranked;
+  const hasTie=ranked.some(r=>r.tiedWith.length>0);
+  const id=Date.now();
+  const data={
+    id,
+    date:new Date().toLocaleString(),
+    results:ranked.map(r=>({
+      rank:r.rank,name:r.name,color:r.color,hits:r.hits,
+      pct:Math.round(r.hits/25*100),
+      stationScores:r.stnScores,
+      tiedWith:r.tiedWith,
+      phone:shooters[r.si].phone||''
+    })),
+    hasTie,shooterCount:shooters.length
+  };
+  saveRound(data);   // local first — never lose data
+  showReport(data);  // show immediately
+
+  // Push to GitHub in background
+  showSyncing(true);
+  const synced=await saveReportToGitHub(data);
+  showSyncing(false);
+  if(synced){
+    try{
+      const saved=JSON.parse(localStorage.getItem('clayai_rounds')||'[]');
+      const match=saved.find(r=>r.id===id);
+      if(match){match.ghSynced=true;localStorage.setItem('clayai_rounds',JSON.stringify(saved));}
+    }catch(e){}
+  }
+}
+
 function showReport(data){
   document.getElementById('wrapper').style.display='none';
   document.getElementById('hchips').style.display='none';
   document.body.classList.add('report-mode');
   const rs=document.getElementById('reportScreen');
-  rs.style.display='block';
-  rs.innerHTML='';
+  rs.style.display='block';rs.innerHTML='';
 
   const bar=document.createElement('div');
   bar.className='rpt-bar';
@@ -706,11 +660,10 @@ function showReport(data){
   const newBtn=document.createElement('button');
   newBtn.style.cssText='padding:10px 20px;background:#444;color:#fff;border:none;border-radius:4px;font-size:15px;font-weight:700;cursor:pointer;';
   newBtn.textContent='⟳ New Round';
-  newBtn.onclick=function(){ resetAll(); return false; };
+  newBtn.onclick=function(){resetAll();return false;};
 
   bar.appendChild(label);
 
-  // Send Scores — texts every shooter in the round who has a phone number
   const shootersWithPhone=(data.results||[]).filter(function(r){return r.phone;});
   if(shootersWithPhone.length){
     const sendBtn=document.createElement('button');
@@ -720,20 +673,16 @@ function showReport(data){
       const medalStr=function(rank){return rank===1?'🥇':rank===2?'🥈':rank===3?'🥉':rank+'.';};
       const sep=/(iPhone|iPad|iPod)/i.test(navigator.userAgent)?'&':'?';
       const standings=data.results.map(function(x){return medalStr(x.rank)+' '+x.name+': '+x.hits+'/25 ('+x.pct+'%)';}).join('\n');
-
-      // Build per-station breakdown line: "S1: 4/5 (80%) | S2: 5/5 (100%) | ..."
       function buildStnLine(r){
         var parts=[];
         for(var s=1;s<=5;s++){
           var shots=(r.stationScores&&r.stationScores[s])||[];
-          if(!shots.length){parts.push('S'+s+': \u2014');continue;}
+          if(!shots.length){parts.push('S'+s+':\u2014');continue;}
           var h=shots.filter(Boolean).length;
-          var pct=Math.round(h/shots.length*100);
-          parts.push('S'+s+': '+h+'/5 ('+pct+'%)');
+          parts.push('S'+s+': '+h+'/5 ('+Math.round(h/shots.length*100)+'%)');
         }
         return parts.join(' | ');
       }
-
       let idx=0;
       function sendNext(){
         if(idx>=shootersWithPhone.length)return;
@@ -745,60 +694,23 @@ function showReport(data){
           +'\n\n— ClayTarget Trap Scoring';
         const a=document.createElement('a');
         a.href='sms:'+r.phone+sep+'body='+encodeURIComponent(msg);
-        a.style.display='none';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        if(idx<shootersWithPhone.length) setTimeout(sendNext,1500);
+        a.style.display='none';document.body.appendChild(a);a.click();document.body.removeChild(a);
+        if(idx<shootersWithPhone.length)setTimeout(sendNext,1500);
       }
-      sendNext();
-      return false;
+      sendNext();return false;
     };
     bar.appendChild(sendBtn);
   }
-
   bar.appendChild(newBtn);
   rs.appendChild(bar);
-
   const card=document.createElement('div');
   card.innerHTML=buildReportHTML(data);
   rs.appendChild(card);
-
   window.scrollTo(0,0);
 }
 
-function finishRound(){
-  const totals=getTotals().sort((a,b)=>b.hits-a.hits);
-  let rank=1;
-  const ranked=totals.map((t,i)=>{
-    if(i>0&&totals[i].hits<totals[i-1].hits)rank=i+1;
-    const tiedWith=totals.filter((x,j)=>j!==i&&x.hits===t.hits).map(x=>x.name);
-    const stnScores={};
-    for(let s=1;s<=5;s++)stnScores[s]=[...(scores[t.si][s]||[])];
-    return {si:t.si,name:t.name,color:t.color,hits:t.hits,rank,tiedWith,stnScores};
-  });
-  roundResults=ranked;
-  const hasTie=ranked.some(r=>r.tiedWith.length>0);
-  const data={
-    date:new Date().toLocaleString(),
-    results:ranked.map(r=>({
-      rank:r.rank,name:r.name,color:r.color,hits:r.hits,
-      pct:Math.round(r.hits/25*100),
-      stationScores:r.stnScores,
-      tiedWith:r.tiedWith,
-      phone:shooters[r.si].phone||''
-    })),
-    hasTie,
-    shooterCount:shooters.length
-  };
-  saveRound(data);
-  showReport(data);
-}
-
-function renderAll(){
-  renderChips();renderField();renderNowShooting();renderRotBanner();
-  renderLeaderboard();renderUpNext();renderLog();
-}
+// ── Render ────────────────────────────────────────────────
+function renderAll(){renderChips();renderField();renderNowShooting();renderRotBanner();renderLeaderboard();renderUpNext();renderLog();}
 
 function renderChips(){
   document.getElementById('cRot').textContent=rotation+'/5';
@@ -809,13 +721,11 @@ function renderChips(){
     document.getElementById('cStn').textContent=curTurn().stn;
   }
 }
-
 function renderField(){
   const fv=document.getElementById('fieldView');fv.innerHTML='';
   const stnMap={};activeOrder.forEach(t=>{stnMap[t.stn]=t;});
   for(let stn=1;stn<=STNS;stn++){
-    const t=stnMap[stn];
-    const tile=document.createElement('div');
+    const t=stnMap[stn];const tile=document.createElement('div');
     const isActive=!waitRotate&&!roundDone&&t&&curTurn().stn===stn&&curTurn().si===t.si;
     tile.className='stn-card'+(isActive?' active':'')+(t?'':' empty');
     if(!t){
@@ -838,7 +748,6 @@ function renderField(){
     fv.appendChild(tile);
   }
 }
-
 function renderNowShooting(){
   const panel=document.getElementById('scoringPanel');
   if(waitRotate||roundDone){panel.style.display='none';return;}
@@ -851,7 +760,6 @@ function renderNowShooting(){
   document.getElementById('nSub').textContent='Station '+stn+' — Shot '+roundShot+' of '+SPS+' | Rotation '+rotation+'/5';
   const ns=document.getElementById('nScore');ns.textContent=totalHits;ns.style.color=sh.color;
 }
-
 function renderRotBanner(){
   const b=document.getElementById('rotBanner');
   if(!waitRotate){b.style.display='none';return;}
@@ -863,14 +771,11 @@ function renderRotBanner(){
     const nxtStn=((sh.startStation-1+rotation)%STNS)+1;
     const item=document.createElement('div');item.className='ritem';
     item.innerHTML='<div class="rav" style="background:'+sh.color+'">'+sh.name.charAt(0)+'</div>'
-      +'<span style="color:white">'+sh.name+'</span>'
-      +'<span style="color:var(--dim)">Stn '+curStn+'</span>'
-      +'<span style="color:var(--accent)">→</span>'
-      +'<span style="color:var(--gold)">Stn '+nxtStn+'</span>';
+      +'<span style="color:white">'+sh.name+'</span><span style="color:var(--dim)">Stn '+curStn+'</span>'
+      +'<span style="color:var(--accent)">→</span><span style="color:var(--gold)">Stn '+nxtStn+'</span>';
     list.appendChild(item);
   });
 }
-
 function renderLeaderboard(){
   const lb=document.getElementById('lb');lb.innerHTML='';
   const rows=shooters.map((sh,si)=>{
@@ -899,7 +804,6 @@ function renderLeaderboard(){
     lb.appendChild(row);
   });
 }
-
 function renderUpNext(){
   const el=document.getElementById('upList');el.innerHTML='';
   if(waitRotate||roundDone)return;
@@ -915,7 +819,6 @@ function renderUpNext(){
     el.appendChild(item);
   });
 }
-
 function renderLog(){
   const el=document.getElementById('slog');
   if(!shootLog.length){el.innerHTML='<div style="text-align:center;color:var(--dim);font-size:12px;padding:14px;font-family:\'Share Tech Mono\',monospace">No shots yet</div>';return;}
@@ -929,9 +832,9 @@ function renderLog(){
   ).join('');
 }
 
+// ── Report HTML ───────────────────────────────────────────
 function buildReportHTML(data){
   const podium=buildPodiumHTML(data.results);
-
   const tableRows=data.results.map(r=>{
     const medal=r.rank===1?'🥇':r.rank===2?'🥈':r.rank===3?'🥉':r.rank+'.';
     const pc=r.pct>=80?'g':r.pct>=60?'o':'p';
@@ -942,15 +845,12 @@ function buildReportHTML(data){
       const h=shots.filter(Boolean).length;
       return '<td class="stn-v '+(h===5?'pf':h>=3?'pg':'pp')+'">'+h+'/5</td>';
     }).join('');
-    return '<tr>'
-      +'<td class="r-medal">'+medal+'</td>'
+    return '<tr><td class="r-medal">'+medal+'</td>'
       +'<td class="tl">'+r.name+(isTied?'<span class="tie-tag">TIE</span>':'')+'</td>'
       +'<td class="r-score">'+r.hits+'/25</td>'
       +'<td><span class="r-pct '+pc+'">'+r.pct+'%</span></td>'
-      +stnCells
-      +'</tr>';
+      +stnCells+'</tr>';
   }).join('');
-
   const shotRows=data.results.map(r=>{
     const cells=[1,2,3,4,5].map(s=>{
       const shots=(r.stationScores&&r.stationScores[s])||[];
@@ -961,9 +861,10 @@ function buildReportHTML(data){
     }).join('');
     return '<tr><td class="tl">'+r.rank+'. '+r.name+'</td><td><strong>'+r.hits+'/25</strong></td>'+cells+'</tr>';
   }).join('');
-
   const tieNote=data.hasTie?'<div class="tie-box">⚠️ <strong>Note:</strong> This round ended in a tie. Tied shooters share the same rank and medal.</div>':'';
-
+  const syncLabel=data.ghSynced
+    ?'<span style="color:#28a745">✓ Synced to GitHub</span>'
+    :'<span style="color:#aaa">○ Not yet synced to GitHub</span>';
   return '<div class="rpt-card"><div class="rpt-body">'
     +'<div class="rpt-head">'
     +'<div class="rpt-eyebrow">Official Trap Shooting Scorecard</div>'
@@ -973,39 +874,32 @@ function buildReportHTML(data){
     +'</div>'
     +'<div class="rpt-sec">🏆 Podium</div>'+podium
     +'<div class="rpt-sec">📊 Final Standings</div>'
-    +'<div class="tbl-wrap"><table class="rtbl">'
-    +'<thead><tr>'
-    +'<th style="width:5%"></th>'
-    +'<th class="tl" style="width:20%">SHOOTER</th>'
+    +'<div class="tbl-wrap"><table class="rtbl"><thead><tr>'
+    +'<th style="width:5%"></th><th class="tl" style="width:20%">SHOOTER</th>'
     +'<th style="width:10%">TOTAL</th><th style="width:8%">PCT</th>'
     +'<th style="width:8%">S1</th><th style="width:8%">S2</th><th style="width:8%">S3</th><th style="width:8%">S4</th><th style="width:8%">S5</th>'
-    +'</tr></thead>'
-    +'<tbody>'+tableRows+'</tbody></table></div>'
+    +'</tr></thead><tbody>'+tableRows+'</tbody></table></div>'
     +tieNote
     +'<div class="rpt-sec">🔫 Shot-by-Shot Breakdown</div>'
-    +'<div class="tbl-wrap"><table class="rtbl stbl">'
-    +'<thead><tr>'
-    +'<th class="tl" style="width:18%">SHOOTER</th>'
-    +'<th style="width:10%">TOTAL</th>'
+    +'<div class="tbl-wrap"><table class="rtbl stbl"><thead><tr>'
+    +'<th class="tl" style="width:18%">SHOOTER</th><th style="width:10%">TOTAL</th>'
     +'<th style="width:14%">STATION 1</th><th style="width:14%">STATION 2</th><th style="width:14%">STATION 3</th><th style="width:14%">STATION 4</th><th style="width:14%">STATION 5</th>'
-    +'</tr></thead>'
-    +'<tbody>'+shotRows+'</tbody></table></div>'
-    +'<div class="rpt-footer"><span>🎯 ClayTarget Trap Scoring</span><span>'+data.shooterCount+' shooters · 5 stations · 25 shots</span><span>'+data.date+'</span></div>'
+    +'</tr></thead><tbody>'+shotRows+'</tbody></table></div>'
+    +'<div class="rpt-footer"><span>🎯 ClayTarget Trap Scoring</span>'
+    +'<span>'+data.shooterCount+' shooters · 5 stations · 25 shots</span>'
+    +'<span style="font-family:\'Share Tech Mono\',monospace;font-size:11px">'+syncLabel+'</span>'
+    +'<span>'+data.date+'</span></div>'
     +'</div></div>';
 }
 
 function buildPodiumHTML(results){
   if(!results||!results.length)return '';
-  const byRank={};
-  results.forEach(r=>{if(!byRank[r.rank])byRank[r.rank]=[];byRank[r.rank].push(r);});
+  const byRank={};results.forEach(r=>{if(!byRank[r.rank])byRank[r.rank]=[];byRank[r.rank].push(r);});
   const cfg={1:{medal:'🥇',color:'#d4af37',height:160,label:'1st Place'},2:{medal:'🥈',color:'#9e9e9e',height:115,label:'2nd Place'},3:{medal:'🥉',color:'#cd7f32',height:80,label:'3rd Place'}};
   const slots=[2,1,3].map(rank=>{
-    const group=byRank[rank];
-    if(!group||!group.length)return '';
-    const c=cfg[rank];
-    const isTied=group.length>1;
-    const score=group[0].hits;
-    const pct=group[0].pct;
+    const group=byRank[rank];if(!group||!group.length)return '';
+    const c=cfg[rank];const isTied=group.length>1;
+    const score=group[0].hits;const pct=group[0].pct;
     const scoreColor=pct>=80?'#155724':pct>=60?'#7a5000':'#721c24';
     const nameRows=group.map(r=>'<div>'+c.medal+' '+r.name+'</div>').join('');
     return '<div class="podium-slot">'
@@ -1019,53 +913,51 @@ function buildPodiumHTML(results){
   return '<div class="podium-wrap">'+slots+'</div>';
 }
 
+// ── Local storage ─────────────────────────────────────────
 function saveRound(data){
-  try{const saved=JSON.parse(localStorage.getItem('clayai_rounds')||'[]');saved.unshift({...data,id:Date.now()});if(saved.length>20)saved.splice(20);localStorage.setItem('clayai_rounds',JSON.stringify(saved));}catch(e){}
+  try{
+    const saved=JSON.parse(localStorage.getItem('clayai_rounds')||'[]');
+    saved.unshift({...data});
+    if(saved.length>20)saved.splice(20);
+    localStorage.setItem('clayai_rounds',JSON.stringify(saved));
+  }catch(e){}
 }
 
 function loadSavedRounds(){
   try{
     const saved=JSON.parse(localStorage.getItem('clayai_rounds')||'[]');
-    const sec=document.getElementById('savedSection');
-    if(!saved.length){sec.style.display='none';return;}
-    sec.style.display='block';
+    const wrap=document.getElementById('savedToggleWrap');
+    if(!saved.length){wrap.style.display='none';return;}
+    wrap.style.display='block';
+    document.getElementById('savedBadge').textContent=saved.length;
     document.getElementById('savedList').innerHTML=saved.slice(0,10).map((r,i)=>{
       const top=r.results[0];
       const names=r.results.map(x=>x.name).join(', ');
+      const syncLine=r.ghSynced
+        ?'<div class="si-sync ok">✓ Synced to GitHub</div>'
+        :'<div class="si-sync pend">○ Local only</div>';
       return '<div class="saved-item">'
         +'<div class="saved-clickable" onclick="viewSavedRound('+i+')">'
         +'<div class="si-date">'+r.date+'</div>'
         +'<div class="si-shooters">'+names+'</div>'
         +'<div class="si-score">🥇 '+top.name+': '+top.hits+'/25'+(r.hasTie?' · TIE':'')+'</div>'
+        +syncLine
         +'</div>'
         +'<button class="del-btn" onclick="deleteSavedRound('+i+')" title="Delete">✕</button>'
         +'</div>';
     }).join('');
-  }catch(e){document.getElementById('savedSection').style.display='none';}
+  }catch(e){document.getElementById('savedToggleWrap').style.display='none';}
 }
 
 function deleteSavedRound(idx){
-  try{const saved=JSON.parse(localStorage.getItem('clayai_rounds')||'[]');saved.splice(idx,1);localStorage.setItem('clayai_rounds',JSON.stringify(saved));loadSavedRounds();}catch(e){}
-}
-
-function viewSavedRound(idx){
   try{
     const saved=JSON.parse(localStorage.getItem('clayai_rounds')||'[]');
-    const data=saved[idx];if(!data)return;
-    showReport(data);
-  }catch(e){alert('Could not load: '+e.message);}
+    saved.splice(idx,1);localStorage.setItem('clayai_rounds',JSON.stringify(saved));loadSavedRounds();
+  }catch(e){}
 }
-
-function downloadReport(){
-  const body=document.getElementById('reportScreen');
-  if(!body)return;
-  const styles=document.querySelector('style').innerHTML;
-  const html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>ClayTarget Round Report</title><style>'+styles+'</style></head><body class="report-mode">'+body.innerHTML+'</body></html>';
-  const blob=new Blob([html],{type:'text/html'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url;a.download='ClayTarget_Round_'+new Date().toISOString().slice(0,10)+'.html';
-  a.click();URL.revokeObjectURL(url);
+function viewSavedRound(idx){
+  try{const saved=JSON.parse(localStorage.getItem('clayai_rounds')||'[]');const data=saved[idx];if(!data)return;showReport(data);}
+  catch(e){alert('Could not load: '+e.message);}
 }
 
 function showFlash(hit){
@@ -1076,7 +968,6 @@ function showFlash(hit){
   p.textContent=hit?'✓ HIT':'✗ MISS';p.className='rpop show '+(hit?'hit':'miss');
   setTimeout(()=>{p.classList.remove('show');p.classList.add('hide');setTimeout(()=>p.className='rpop',300);},500);
 }
-
 function setupKeys(){
   document.addEventListener('keydown',e=>{
     if(e.target.tagName==='INPUT')return;
@@ -1086,7 +977,6 @@ function setupKeys(){
     if(e.key==='Enter'&&waitRotate)doRotate();
   });
 }
-
 function resetAll(){
   closeModal();
   document.getElementById('wrapper').style.display='block';
@@ -1096,8 +986,7 @@ function resetAll(){
   document.getElementById('reportScreen').innerHTML='';
   document.getElementById('hchips').style.display='none';
   document.body.classList.remove('report-mode');
-  window.scrollTo(0,0);
-  buildSetup();
+  window.scrollTo(0,0);buildSetup();
 }
 
 buildSetup();
