@@ -338,19 +338,6 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
     </div>
   </div>
 
-  <!-- GitHub Token Modal -->
-  <div id="tokenModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:600;align-items:center;justify-content:center">
-    <div style="background:#0d1520;border:1px solid #ffd700;border-radius:10px;padding:24px;width:90%;max-width:380px">
-      <div class="ptitle" style="margin-bottom:8px;color:var(--gold)">🔑 GitHub Sync Setup</div>
-      <p style="font-size:12px;color:var(--dim);margin-bottom:14px;line-height:1.6">To sync your roster across devices, enter your GitHub Personal Access Token. Create one at:<br><span style="color:var(--accent)">github.com → Settings → Developer Settings → Personal Access Tokens → Tokens (classic)</span><br>Give it <strong style="color:white">repo</strong> scope.</p>
-      <input type="password" class="ninput" id="ghToken" placeholder="Paste token here..." style="margin-bottom:14px">
-      <div style="display:flex;gap:10px">
-        <button class="start-btn" style="font-size:15px;padding:12px;background:var(--gold);color:#000" onclick="saveToken()">Save Token</button>
-        <button class="btn" style="flex:1;padding:12px" onclick="closeTokenModal()">Skip for now</button>
-      </div>
-    </div>
-  </div>
-
   <!-- Sync indicator -->
   <div id="syncStatus" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:var(--accent);font-family:'Share Tech Mono',monospace;font-size:13px;padding:10px 20px;border-radius:20px;border:1px solid var(--accent);z-index:400">
     ⟳ Syncing roster...
@@ -405,47 +392,32 @@ let rotation=1,roundShot=1,shooterTurnIdx=0;
 let waitRotate=false,roundDone=false,shootLog=[];
 let activeOrder=[],roundStartTime=null,roundResults=null;
 
-// ── GitHub Config ─────────────────────────────────────────
-const GH_OWNER='trapshootingai';
-const GH_REPO='TrapAI';
-const GH_FILE='roster.json';
-const GH_API='https://api.github.com/repos/'+GH_OWNER+'/'+GH_REPO+'/contents/'+GH_FILE;
-
-const GH_TOKEN_HARDCODED='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'; // Paste your GitHub token between the quotes here
-function getToken(){return localStorage.getItem('clayai_gh_token')||GH_TOKEN_HARDCODED;}
+// ── Cloudflare Worker Proxy ───────────────────────────────
+const WORKER_URL='https://clayai-roster.yourname.workers.dev'; // Replace with your Worker URL
 
 async function ghFetchRoster(){
   try{
-    const res=await fetch(GH_API,{headers:{'Accept':'application/vnd.github.v3+json'}});
+    const res=await fetch(WORKER_URL,{method:'GET'});
     if(!res.ok)throw new Error('fetch failed');
     const json=await res.json();
     const decoded=JSON.parse(atob(json.content.replace(/\n/g,'')));
-    const sha=json.sha;
     localStorage.setItem('clayai_roster',JSON.stringify(decoded));
-    localStorage.setItem('clayai_roster_sha',sha);
+    localStorage.setItem('clayai_roster_sha',json.sha);
     return decoded;
   }catch(e){
-    // Fall back to local cache if offline or fetch fails
     try{return JSON.parse(localStorage.getItem('clayai_roster')||'[]');}catch(e2){return [];}
   }
 }
 
 async function ghSaveRoster(roster){
-  const token=getToken();
-  if(!token){
-    // No token — save locally only and prompt
-    localStorage.setItem('clayai_roster',JSON.stringify(roster));
-    showTokenPrompt();
-    return;
-  }
   const sha=localStorage.getItem('clayai_roster_sha')||'';
   const content=btoa(unescape(encodeURIComponent(JSON.stringify(roster,null,2))));
   const body={message:'Update roster',content};
   if(sha)body.sha=sha;
   try{
-    const res=await fetch(GH_API,{
+    const res=await fetch(WORKER_URL,{
       method:'PUT',
-      headers:{'Authorization':'token '+token,'Content-Type':'application/json','Accept':'application/vnd.github.v3+json'},
+      headers:{'Content-Type':'application/json'},
       body:JSON.stringify(body)
     });
     if(!res.ok){const e=await res.json();throw new Error(e.message||'save failed');}
@@ -454,22 +426,8 @@ async function ghSaveRoster(roster){
     localStorage.setItem('clayai_roster',JSON.stringify(roster));
   }catch(e){
     localStorage.setItem('clayai_roster',JSON.stringify(roster));
-    alert('Saved locally but could not sync to GitHub: '+e.message);
+    alert('Saved locally but could not sync: '+e.message);
   }
-}
-
-function showTokenPrompt(){
-  document.getElementById('tokenModal').style.display='flex';
-}
-function closeTokenModal(){
-  document.getElementById('tokenModal').style.display='none';
-}
-function saveToken(){
-  const t=document.getElementById('ghToken').value.trim();
-  if(!t){alert('Please paste your token.');return;}
-  localStorage.setItem('clayai_gh_token',t);
-  closeTokenModal();
-  alert('Token saved! Your roster will now sync across all devices.');
 }
 
 // ── Roster ──────────────────────────────────────────────
