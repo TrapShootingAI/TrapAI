@@ -1,0 +1,54 @@
+{
+  "id": 1774305594673,
+  "date": "3/23/2026, 6:39:54 PM",
+  "results": [
+    {
+      "rank": 1,
+      "name": "Mateo Parisi",
+      "color": "#00e5ff",
+      "hits": 24,
+      "pct": 96,
+      "stationScores": {
+        "1": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "2": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "3": [
+          true,
+          true,
+          false,
+          true,
+          true
+        ],
+        "4": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "5": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ]
+      },
+      "tiedWith": [],
+      "phone": "7343043647"
+    }
+  ],
+  "hasTie": false,
+  "shooterCount": 1
+}
