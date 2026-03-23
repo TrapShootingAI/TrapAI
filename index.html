@@ -305,14 +305,36 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
   </header>
   <div id="setupScreen">
     <div class="panel">
-      <div class="ptitle">👥 Setup Shooters</div>
-      <p style="font-size:13px;color:var(--dim);margin-bottom:14px">Each shooter starts at their assigned station. Within each rotation, shooters take one shot at a time left to right until each has 5 shots, then everyone rotates one station right.</p>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <div class="ptitle" style="margin-bottom:0">👥 Assign Stations</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn" onclick="toggleRoster()" id="rosterToggleBtn">👤 Manage Team</button>
+          <button class="btn" onclick="openAddMember()">+ Add Member</button>
+        </div>
+      </div>
+      <div id="rosterList" style="display:none;margin-bottom:16px"></div>
       <div class="setup-grid" id="setupGrid"></div>
+
       <div id="savedSection" style="display:none;margin-bottom:16px">
         <div class="ptitle">📁 Saved Rounds</div>
         <div id="savedList"></div>
       </div>
       <button class="start-btn" onclick="startRound()">🎯 START NEW ROUND</button>
+    </div>
+  </div>
+
+  <!-- Add/Edit Member Modal -->
+  <div id="memberModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:500;display:none;align-items:center;justify-content:center">
+    <div style="background:#0d1520;border:1px solid #1a2a3a;border-radius:10px;padding:24px;width:90%;max-width:360px;position:relative">
+      <div class="ptitle" id="modalTitle" style="margin-bottom:16px">Add Member</div>
+      <input type="text" class="ninput" id="mName" placeholder="Full name *" style="margin-bottom:10px">
+      <input type="tel" class="ninput" id="mPhone" placeholder="Phone number (for texting scores)" style="margin-bottom:10px">
+      <input type="email" class="ninput" id="mEmail" placeholder="Email (optional)" style="margin-bottom:16px">
+      <input type="hidden" id="mEditIdx" value="-1">
+      <div style="display:flex;gap:10px">
+        <button class="start-btn" style="font-size:15px;padding:12px" onclick="saveMember()">Save</button>
+        <button class="btn" style="flex:1;padding:12px" onclick="closeModal()">Cancel</button>
+      </div>
     </div>
   </div>
   <div id="mainScreen">
@@ -365,42 +387,115 @@ let rotation=1,roundShot=1,shooterTurnIdx=0;
 let waitRotate=false,roundDone=false,shootLog=[];
 let activeOrder=[],roundStartTime=null,roundResults=null;
 
+// ── Roster ──────────────────────────────────────────────
+function toggleRoster(){
+  const rl=document.getElementById('rosterList');
+  const btn=document.getElementById('rosterToggleBtn');
+  const visible=rl.style.display!=='none';
+  rl.style.display=visible?'none':'block';
+  btn.textContent=visible?'👤 Manage Team':'👤 Hide Team';
+}
+
+function loadRoster(){
+  try{return JSON.parse(localStorage.getItem('clayai_roster')||'[]');}catch(e){return [];}
+}
+function saveRoster(r){
+  try{localStorage.setItem('clayai_roster',JSON.stringify(r));}catch(e){}
+}
+function openAddMember(){
+  document.getElementById('mName').value='';
+  document.getElementById('mPhone').value='';
+  document.getElementById('mEmail').value='';
+  document.getElementById('mEditIdx').value='-1';
+  document.getElementById('modalTitle').textContent='Add Member';
+  document.getElementById('memberModal').style.display='flex';
+}
+function openEditMember(idx){
+  const roster=loadRoster();
+  const m=roster[idx];
+  document.getElementById('mName').value=m.name||'';
+  document.getElementById('mPhone').value=m.phone||'';
+  document.getElementById('mEmail').value=m.email||'';
+  document.getElementById('mEditIdx').value=idx;
+  document.getElementById('modalTitle').textContent='Edit Member';
+  document.getElementById('memberModal').style.display='flex';
+}
+function closeModal(){
+  document.getElementById('memberModal').style.display='none';
+}
+function saveMember(){
+  const name=document.getElementById('mName').value.trim();
+  if(!name){alert('Name is required.');return;}
+  const phone=document.getElementById('mPhone').value.trim();
+  const email=document.getElementById('mEmail').value.trim();
+  const idx=parseInt(document.getElementById('mEditIdx').value);
+  const roster=loadRoster();
+  if(idx>=0){roster[idx]={name,phone,email};}
+  else{roster.push({name,phone,email});}
+  saveRoster(roster);
+  closeModal();
+  buildSetup();
+}
+function deleteMember(idx){
+  if(!confirm('Remove this member from the roster?'))return;
+  const roster=loadRoster();
+  roster.splice(idx,1);
+  saveRoster(roster);
+  buildSetup();
+}
+
 function buildSetup(){
+  const roster=loadRoster();
+
+  // Render roster list (preserve open/closed state)
+  const rl=document.getElementById('rosterList');
+  const wasVisible=rl.style.display==='block';
+  if(!roster.length){
+    rl.innerHTML='<div style="text-align:center;color:var(--dim);font-size:13px;padding:14px;font-family:\'Share Tech Mono\',monospace">No members yet — tap + Add Member</div>';
+  } else {
+    rl.innerHTML=roster.map((m,i)=>'<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:5px;margin-bottom:6px">'
+      +'<div style="width:32px;height:32px;border-radius:50%;background:'+COLORS[i%COLORS.length]+';display:flex;align-items:center;justify-content:center;font-family:\'Rajdhani\',sans-serif;font-size:15px;font-weight:700;color:#000;flex-shrink:0">'+m.name.charAt(0)+'</div>'
+      +'<div style="flex:1">'
+        +'<div style="font-size:14px;font-weight:600;color:white">'+m.name+'</div>'
+        +'<div style="font-size:11px;color:var(--dim);font-family:\'Share Tech Mono\',monospace">'+(m.phone||'no phone')+(m.email?' · '+m.email:'')+'</div>'
+      +'</div>'
+      +'<button class="btn" style="padding:4px 10px;font-size:11px" onclick="openEditMember('+i+')">Edit</button>'
+      +'<button class="btn d" style="padding:4px 10px;font-size:11px" onclick="deleteMember('+i+')">✕</button>'
+      +'</div>'
+    ).join('');
+  }
+  rl.style.display=wasVisible?'block':'none';
+
+  // Render station assignment grid
   const g=document.getElementById('setupGrid');g.innerHTML='';
   for(let i=0;i<5;i++){
-    const c=COLORS[i],on=i<2;
+    const c=COLORS[i];
     const d=document.createElement('div');
-    d.className='scard '+(on?'on':'');d.id='sc'+i;
+    d.className='scard on';d.id='sc'+i;
+    const options='<option value="">— Empty —</option>'
+      +roster.map((m,mi)=>'<option value="'+mi+'">'+m.name+'</option>').join('');
     d.innerHTML='<div class="ctop"><div class="snum" style="background:'+c+'">'+(i+1)+'</div>'
-      +'<span style="font-family:\'Rajdhani\',sans-serif;font-size:15px;font-weight:600;color:white">Starts Station '+(i+1)+'</span></div>'
-      +'<input type="text" class="ninput" id="sn'+i+'" placeholder="Enter name..." value="'+(on?'Shooter '+(i+1):'')+'" '+(on?'':'disabled')+'>'
-      +'<label class="togrow" onclick="togShooter('+i+')">'
-      +'<div class="tog '+(on?'on':'')+'" id="tog'+i+'"></div>'
-      +'<span id="tl'+i+'">'+(on?'Active — Station '+(i+1):'Not playing')+'</span></label>';
+      +'<span style="font-family:\'Rajdhani\',sans-serif;font-size:15px;font-weight:600;color:white">Station '+(i+1)+'</span></div>'
+      +'<select class="ninput" id="ss'+i+'" style="cursor:pointer">'+options+'</select>';
     g.appendChild(d);
   }
+
   loadSavedRounds();
 }
 
-function togShooter(i){
-  const t=document.getElementById('tog'+i),l=document.getElementById('tl'+i),
-        inp=document.getElementById('sn'+i),c=document.getElementById('sc'+i);
-  const on=t.classList.contains('on');
-  t.classList.toggle('on',!on);
-  l.textContent=!on?'Active — Station '+(i+1):'Not playing';
-  inp.disabled=on;c.classList.toggle('on',!on);
-}
-
 function startRound(){
+  const roster=loadRoster();
   shooters=[];
   for(let i=0;i<5;i++){
-    const t=document.getElementById('tog'+i);
-    if(t.classList.contains('on')){
-      const name=document.getElementById('sn'+i).value.trim()||'Shooter '+(i+1);
-      shooters.push({name,color:COLORS[i],startStation:i+1});
+    const sel=document.getElementById('ss'+i);
+    const val=sel?sel.value:'';
+    if(val!==''){
+      const mi=parseInt(val);
+      const m=roster[mi];
+      shooters.push({name:m.name,color:COLORS[i],startStation:i+1,phone:m.phone||'',email:m.email||''});
     }
   }
-  if(!shooters.length){alert('Add at least 1 shooter!');return;}
+  if(!shooters.length){alert('Assign at least 1 shooter to a station!');return;}
   scores={};shootLog=[];
   shooters.forEach((_,si)=>{scores[si]={1:[],2:[],3:[],4:[],5:[]};});
   rotation=1;roundShot=1;shooterTurnIdx=0;waitRotate=false;roundDone=false;roundResults=null;
@@ -498,30 +593,45 @@ function showReport(data){
   label.style.cssText='color:#00e5ff;font-size:13px;flex:1;font-family:monospace;';
   label.textContent='🎯 SCORECARD — '+data.date;
 
-  const shareText=buildShareText(data);
-  const emailSub=encodeURIComponent('🎯 ClayAI Trap Shooting Results');
-  const emailBody=encodeURIComponent(shareText);
-  const smsSep=/(iPhone|iPad|iPod)/i.test(navigator.userAgent)?'&':'?';
-  const smsBody=encodeURIComponent(shareText);
-
-  const printBtn=document.createElement('a');
-  printBtn.style.cssText='padding:10px 20px;background:#00e5ff;color:#000;border-radius:4px;font-size:15px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block;';
-  printBtn.textContent='✉️ Email Results';
-  printBtn.href='mailto:?subject='+emailSub+'&body='+emailBody;
-
-  const smsBtn=document.createElement('a');
-  smsBtn.style.cssText='padding:10px 20px;background:#22c55e;color:#fff;border-radius:4px;font-size:15px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block;';
-  smsBtn.textContent='💬 Text Results';
-  smsBtn.href='sms:'+smsSep+'body='+smsBody;
-
   const newBtn=document.createElement('button');
   newBtn.style.cssText='padding:10px 20px;background:#444;color:#fff;border:none;border-radius:4px;font-size:15px;font-weight:700;cursor:pointer;';
   newBtn.textContent='⟳ New Round';
   newBtn.onclick=function(){ resetAll(); return false; };
 
   bar.appendChild(label);
-  bar.appendChild(printBtn);
-  bar.appendChild(smsBtn);
+
+  // Send Scores — texts every shooter in the round who has a phone number
+  const shootersWithPhone=(data.results||[]).filter(function(r){return r.phone;});
+  if(shootersWithPhone.length){
+    const sendBtn=document.createElement('button');
+    sendBtn.style.cssText='padding:10px 20px;background:#f59e0b;color:#000;border:none;border-radius:4px;font-size:15px;font-weight:700;cursor:pointer;';
+    sendBtn.textContent='📲 Send Scores';
+    sendBtn.onclick=function(){
+      const medalStr=function(rank){return rank===1?'🥇':rank===2?'🥈':rank===3?'🥉':rank+'.';};
+      const sep=/(iPhone|iPad|iPod)/i.test(navigator.userAgent)?'&':'?';
+      const standings=data.results.map(function(x){return medalStr(x.rank)+' '+x.name+': '+x.hits+'/25 ('+x.pct+'%)';}).join('\n');
+      let idx=0;
+      function sendNext(){
+        if(idx>=shootersWithPhone.length)return;
+        const r=shootersWithPhone[idx++];
+        const msg='🎯 Hey '+r.name+'! Your trap scores:\n\n'
+          +medalStr(r.rank)+' YOU: '+r.hits+'/25 ('+r.pct+'%)\n\n'
+          +'Full standings:\n'+standings
+          +'\n\n— ClayAI Trap Scoring';
+        const a=document.createElement('a');
+        a.href='sms:'+r.phone+sep+'body='+encodeURIComponent(msg);
+        a.style.display='none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        if(idx<shootersWithPhone.length) setTimeout(sendNext,1500);
+      }
+      sendNext();
+      return false;
+    };
+    bar.appendChild(sendBtn);
+  }
+
   bar.appendChild(newBtn);
   rs.appendChild(bar);
 
@@ -550,7 +660,8 @@ function finishRound(){
       rank:r.rank,name:r.name,color:r.color,hits:r.hits,
       pct:Math.round(r.hits/25*100),
       stationScores:r.stnScores,
-      tiedWith:r.tiedWith
+      tiedWith:r.tiedWith,
+      phone:shooters[r.si].phone||''
     })),
     hasTie,
     shooterCount:shooters.length
@@ -853,6 +964,7 @@ function setupKeys(){
 }
 
 function resetAll(){
+  closeModal();
   document.getElementById('wrapper').style.display='block';
   document.getElementById('setupScreen').style.display='block';
   document.getElementById('mainScreen').style.display='none';
