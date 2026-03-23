@@ -24,8 +24,8 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
 .chip{background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:4px;padding:5px 12px;font-family:'Share Tech Mono',monospace;font-size:11px;text-align:center}
 .chip .v{font-size:17px;color:var(--accent);display:block;font-weight:700}
 .chip .l{color:var(--dim);font-size:10px}
-.panel{background:var(--panel);border:1px solid var(--border);padding:16px;position:relative;overflow:hidden;margin-bottom:2px}
-.panel::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:0.3}
+.panel{background:var(--panel);border:1px solid var(--border);padding:16px;position:relative;overflow:visible;margin-bottom:2px}
+.panel::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:0.3;pointer-events:none}
 .ptitle{font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:var(--accent);margin-bottom:14px}
 #setupScreen{display:block}#mainScreen{display:none}#reportScreen{display:none}
 .setup-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;margin-bottom:16px}
@@ -312,7 +312,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
           <button class="btn" onclick="openAddMember()">+ Add Member</button>
         </div>
       </div>
-      <div id="rosterList" style="display:none;margin-bottom:16px"></div>
+      <div id="rosterList" style="display:none;margin-bottom:16px;position:relative;z-index:10"></div>
       <div class="setup-grid" id="setupGrid"></div>
 
       <div id="savedSection" style="display:none;margin-bottom:16px">
@@ -324,7 +324,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
   </div>
 
   <!-- Add/Edit Member Modal -->
-  <div id="memberModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:500;display:none;align-items:center;justify-content:center">
+  <div id="memberModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:500;align-items:center;justify-content:center">
     <div style="background:#0d1520;border:1px solid #1a2a3a;border-radius:10px;padding:24px;width:90%;max-width:360px;position:relative">
       <div class="ptitle" id="modalTitle" style="margin-bottom:16px">Add Member</div>
       <input type="text" class="ninput" id="mName" placeholder="Full name *" style="margin-bottom:10px">
@@ -336,6 +336,24 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
         <button class="btn" style="flex:1;padding:12px" onclick="closeModal()">Cancel</button>
       </div>
     </div>
+  </div>
+
+  <!-- GitHub Token Modal -->
+  <div id="tokenModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:600;align-items:center;justify-content:center">
+    <div style="background:#0d1520;border:1px solid #ffd700;border-radius:10px;padding:24px;width:90%;max-width:380px">
+      <div class="ptitle" style="margin-bottom:8px;color:var(--gold)">🔑 GitHub Sync Setup</div>
+      <p style="font-size:12px;color:var(--dim);margin-bottom:14px;line-height:1.6">To sync your roster across devices, enter your GitHub Personal Access Token. Create one at:<br><span style="color:var(--accent)">github.com → Settings → Developer Settings → Personal Access Tokens → Tokens (classic)</span><br>Give it <strong style="color:white">repo</strong> scope.</p>
+      <input type="password" class="ninput" id="ghToken" placeholder="Paste token here..." style="margin-bottom:14px">
+      <div style="display:flex;gap:10px">
+        <button class="start-btn" style="font-size:15px;padding:12px;background:var(--gold);color:#000" onclick="saveToken()">Save Token</button>
+        <button class="btn" style="flex:1;padding:12px" onclick="closeTokenModal()">Skip for now</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sync indicator -->
+  <div id="syncStatus" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:var(--accent);font-family:'Share Tech Mono',monospace;font-size:13px;padding:10px 20px;border-radius:20px;border:1px solid var(--accent);z-index:400">
+    ⟳ Syncing roster...
   </div>
   <div id="mainScreen">
     <div class="mgrid">
@@ -387,6 +405,72 @@ let rotation=1,roundShot=1,shooterTurnIdx=0;
 let waitRotate=false,roundDone=false,shootLog=[];
 let activeOrder=[],roundStartTime=null,roundResults=null;
 
+// ── GitHub Config ─────────────────────────────────────────
+const GH_OWNER='trapshootingai';
+const GH_REPO='TrapAI';
+const GH_FILE='roster.json';
+const GH_API='https://api.github.com/repos/'+GH_OWNER+'/'+GH_REPO+'/contents/'+GH_FILE;
+
+function getToken(){return localStorage.getItem('clayai_gh_token')||'';}
+
+async function ghFetchRoster(){
+  try{
+    const res=await fetch(GH_API,{headers:{'Accept':'application/vnd.github.v3+json'}});
+    if(!res.ok)throw new Error('fetch failed');
+    const json=await res.json();
+    const decoded=JSON.parse(atob(json.content.replace(/\n/g,'')));
+    const sha=json.sha;
+    localStorage.setItem('clayai_roster',JSON.stringify(decoded));
+    localStorage.setItem('clayai_roster_sha',sha);
+    return decoded;
+  }catch(e){
+    // Fall back to local cache if offline or fetch fails
+    try{return JSON.parse(localStorage.getItem('clayai_roster')||'[]');}catch(e2){return [];}
+  }
+}
+
+async function ghSaveRoster(roster){
+  const token=getToken();
+  if(!token){
+    // No token — save locally only and prompt
+    localStorage.setItem('clayai_roster',JSON.stringify(roster));
+    showTokenPrompt();
+    return;
+  }
+  const sha=localStorage.getItem('clayai_roster_sha')||'';
+  const content=btoa(unescape(encodeURIComponent(JSON.stringify(roster,null,2))));
+  const body={message:'Update roster',content};
+  if(sha)body.sha=sha;
+  try{
+    const res=await fetch(GH_API,{
+      method:'PUT',
+      headers:{'Authorization':'token '+token,'Content-Type':'application/json','Accept':'application/vnd.github.v3+json'},
+      body:JSON.stringify(body)
+    });
+    if(!res.ok){const e=await res.json();throw new Error(e.message||'save failed');}
+    const json=await res.json();
+    localStorage.setItem('clayai_roster_sha',json.content.sha);
+    localStorage.setItem('clayai_roster',JSON.stringify(roster));
+  }catch(e){
+    localStorage.setItem('clayai_roster',JSON.stringify(roster));
+    alert('Saved locally but could not sync to GitHub: '+e.message);
+  }
+}
+
+function showTokenPrompt(){
+  document.getElementById('tokenModal').style.display='flex';
+}
+function closeTokenModal(){
+  document.getElementById('tokenModal').style.display='none';
+}
+function saveToken(){
+  const t=document.getElementById('ghToken').value.trim();
+  if(!t){alert('Please paste your token.');return;}
+  localStorage.setItem('clayai_gh_token',t);
+  closeTokenModal();
+  alert('Token saved! Your roster will now sync across all devices.');
+}
+
 // ── Roster ──────────────────────────────────────────────
 function toggleRoster(){
   const rl=document.getElementById('rosterList');
@@ -399,9 +483,7 @@ function toggleRoster(){
 function loadRoster(){
   try{return JSON.parse(localStorage.getItem('clayai_roster')||'[]');}catch(e){return [];}
 }
-function saveRoster(r){
-  try{localStorage.setItem('clayai_roster',JSON.stringify(r));}catch(e){}
-}
+
 function openAddMember(){
   document.getElementById('mName').value='';
   document.getElementById('mPhone').value='';
@@ -423,7 +505,7 @@ function openEditMember(idx){
 function closeModal(){
   document.getElementById('memberModal').style.display='none';
 }
-function saveMember(){
+async function saveMember(){
   const name=document.getElementById('mName').value.trim();
   if(!name){alert('Name is required.');return;}
   const phone=document.getElementById('mPhone').value.trim();
@@ -432,37 +514,98 @@ function saveMember(){
   const roster=loadRoster();
   if(idx>=0){roster[idx]={name,phone,email};}
   else{roster.push({name,phone,email});}
-  saveRoster(roster);
   closeModal();
+  showSyncing(true);
+  await ghSaveRoster(roster);
+  showSyncing(false);
   buildSetup();
 }
-function deleteMember(idx){
-  if(!confirm('Remove this member from the roster?'))return;
+async function deleteMember(idx){
   const roster=loadRoster();
+  const member=roster[idx];
+  if(!member){alert('Member not found.');return;}
+  if(!confirm('Delete '+member.name+'?'))return;
   roster.splice(idx,1);
-  saveRoster(roster);
+  showSyncing(true);
+  await ghSaveRoster(roster);
+  showSyncing(false);
   buildSetup();
 }
 
-function buildSetup(){
-  const roster=loadRoster();
+function showSyncing(on){
+  document.getElementById('syncStatus').style.display=on?'block':'none';
+}
+
+async function buildSetup(){
+  showSyncing(true);
+  const roster=await ghFetchRoster();
+  showSyncing(false);
 
   // Render roster list (preserve open/closed state)
   const rl=document.getElementById('rosterList');
   const wasVisible=rl.style.display==='block';
+  rl.innerHTML='';
   if(!roster.length){
-    rl.innerHTML='<div style="text-align:center;color:var(--dim);font-size:13px;padding:14px;font-family:\'Share Tech Mono\',monospace">No members yet — tap + Add Member</div>';
+    const empty=document.createElement('div');
+    empty.style.cssText='text-align:center;color:var(--dim);font-size:13px;padding:14px;font-family:\'Share Tech Mono\',monospace';
+    empty.textContent='No members yet — tap + Add Member';
+    rl.appendChild(empty);
   } else {
-    rl.innerHTML=roster.map((m,i)=>'<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:5px;margin-bottom:6px">'
-      +'<div style="width:32px;height:32px;border-radius:50%;background:'+COLORS[i%COLORS.length]+';display:flex;align-items:center;justify-content:center;font-family:\'Rajdhani\',sans-serif;font-size:15px;font-weight:700;color:#000;flex-shrink:0">'+m.name.charAt(0)+'</div>'
-      +'<div style="flex:1">'
-        +'<div style="font-size:14px;font-weight:600;color:white">'+m.name+'</div>'
-        +'<div style="font-size:11px;color:var(--dim);font-family:\'Share Tech Mono\',monospace">'+(m.phone||'no phone')+(m.email?' · '+m.email:'')+'</div>'
-      +'</div>'
-      +'<button class="btn" style="padding:4px 10px;font-size:11px" onclick="openEditMember('+i+')">Edit</button>'
-      +'<button class="btn d" style="padding:4px 10px;font-size:11px" onclick="deleteMember('+i+')">✕</button>'
-      +'</div>'
-    ).join('');
+    roster.forEach(function(m,i){
+      const row=document.createElement('div');
+      row.style.cssText='display:flex;align-items:center;gap:10px;padding:9px 12px;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:5px;margin-bottom:6px;position:relative;z-index:10';
+
+      const avatar=document.createElement('div');
+      avatar.style.cssText='width:32px;height:32px;border-radius:50%;background:'+COLORS[i%COLORS.length]+';display:flex;align-items:center;justify-content:center;font-family:\'Rajdhani\',sans-serif;font-size:15px;font-weight:700;color:#000;flex-shrink:0';
+      avatar.textContent=m.name.charAt(0);
+
+      const info=document.createElement('div');
+      info.style.cssText='flex:1';
+      info.innerHTML='<div style="font-size:14px;font-weight:600;color:white">'+m.name+'</div>'
+        +'<div style="font-size:11px;color:var(--dim);font-family:\'Share Tech Mono\',monospace">'+(m.phone||'no phone')+(m.email?' · '+m.email:'')+'</div>';
+
+      // Swipe hint label
+      const hint=document.createElement('div');
+      hint.style.cssText='font-size:9px;color:var(--dim);font-family:\'Share Tech Mono\',monospace;text-align:right;line-height:1.4;flex-shrink:0';
+      hint.innerHTML='← delete<br>edit →';
+
+      row.appendChild(avatar);
+      row.appendChild(info);
+      row.appendChild(hint);
+      rl.appendChild(row);
+
+      // Swipe handling — capture idx in closure
+      (function(memberIdx){
+        let startX=0,startY=0,moved=false;
+        row.addEventListener('touchstart',function(e){
+          startX=e.touches[0].clientX;
+          startY=e.touches[0].clientY;
+          moved=false;
+          row.style.transition='none';
+        },{passive:true});
+        row.addEventListener('touchmove',function(e){
+          const dx=e.touches[0].clientX-startX;
+          const dy=e.touches[0].clientY-startY;
+          if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>8){
+            moved=true;
+            row.style.transform='translateX('+Math.max(-80,Math.min(80,dx))+'px)';
+            if(dx<-20) row.style.background='rgba(255,51,85,0.25)';
+            else if(dx>20) row.style.background='rgba(0,229,255,0.15)';
+            else row.style.background='rgba(0,0,0,0.2)';
+          }
+        },{passive:true});
+        row.addEventListener('touchend',function(e){
+          const dx=e.changedTouches[0].clientX-startX;
+          row.style.transition='transform 0.25s,background 0.25s';
+          row.style.transform='translateX(0)';
+          row.style.background='rgba(0,0,0,0.2)';
+          if(moved){
+            if(dx<-60){ setTimeout(function(){deleteMember(memberIdx);},250); }
+            else if(dx>60){ setTimeout(function(){openEditMember(memberIdx);},250); }
+          }
+        },{passive:true});
+      })(i);
+    });
   }
   rl.style.display=wasVisible?'block':'none';
 
@@ -561,20 +704,6 @@ function getTotals(){
     const h=[1,2,3,4,5].reduce((a,s)=>a+scores[si][s].filter(Boolean).length,0);
     return {si,name:sh.name,color:sh.color,hits:h};
   });
-}
-
-function buildShareText(data){
-  let txt='🎯 ClayAI Trap Shooting Results\n';
-  txt+='————————————————\n';
-  if(data&&data.results){
-    data.results.forEach(function(r){
-      const medal=r.rank===1?'🥇':r.rank===2?'🥈':r.rank===3?'🥉':r.rank+'.';
-      txt+=medal+' '+r.name+': '+r.hits+'/25 ('+r.pct+'%)\n';
-    });
-  }
-  txt+='————————————————\n';
-  txt+='Scored with ClayAI Trap Field Rotation';
-  return txt;
 }
 
 function showReport(data){
