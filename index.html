@@ -411,7 +411,8 @@ const GH_REPO='TrapAI';
 const GH_FILE='roster.json';
 const GH_API='https://api.github.com/repos/'+GH_OWNER+'/'+GH_REPO+'/contents/'+GH_FILE;
 
-function getToken(){return localStorage.getItem('clayai_gh_token')||'';}
+const GH_TOKEN_HARDCODED='ghp_Xf8oYYudZuzF6HLØNoWmi0fNpycXCU01pF6C'; // Paste your GitHub token between the quotes here
+function getToken(){return localStorage.getItem('clayai_gh_token')||GH_TOKEN_HARDCODED;}
 
 async function ghFetchRoster(){
   try{
