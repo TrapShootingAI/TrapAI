@@ -512,7 +512,7 @@ async function buildSetup(){
   } else {
     roster.forEach(function(m,i){
       const row=document.createElement('div');
-      row.style.cssText='display:flex;align-items:center;gap:10px;padding:9px 12px;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:5px;margin-bottom:6px;position:relative;z-index:10';
+      row.style.cssText='display:flex;align-items:center;gap:10px;padding:9px 12px;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:5px;margin-bottom:6px;position:relative;z-index:10;cursor:pointer;transition:background 0.2s,transform 0.25s;';
 
       const avatar=document.createElement('div');
       avatar.style.cssText='width:32px;height:32px;border-radius:50%;background:'+COLORS[i%COLORS.length]+';display:flex;align-items:center;justify-content:center;font-family:\'Rajdhani\',sans-serif;font-size:15px;font-weight:700;color:#000;flex-shrink:0';
@@ -528,9 +528,40 @@ async function buildSetup(){
       hint.style.cssText='font-size:9px;color:var(--dim);font-family:\'Share Tech Mono\',monospace;text-align:right;line-height:1.4;flex-shrink:0';
       hint.innerHTML='← delete<br>edit →';
 
+      // Desktop hover buttons (hidden on mobile)
+      const btnGroup=document.createElement('div');
+      btnGroup.className='roster-btn-group';
+      btnGroup.style.cssText='display:none;gap:6px;flex-shrink:0;';
+
+      const editBtn=document.createElement('button');
+      editBtn.className='btn';
+      editBtn.style.cssText='padding:5px 12px;font-size:12px;cursor:pointer;';
+      editBtn.textContent='Edit';
+      editBtn.onclick=function(e){e.stopPropagation();openEditMember(i);};
+
+      const delBtn=document.createElement('button');
+      delBtn.className='btn d';
+      delBtn.style.cssText='padding:5px 12px;font-size:12px;cursor:pointer;';
+      delBtn.textContent='Delete';
+      delBtn.onclick=function(e){e.stopPropagation();deleteMember(i);};
+
+      btnGroup.appendChild(editBtn);
+      btnGroup.appendChild(delBtn);
+
+      // Show buttons on hover (desktop only)
+      row.addEventListener('mouseenter',function(){
+        btnGroup.style.display='flex';
+        hint.style.display='none';
+      });
+      row.addEventListener('mouseleave',function(){
+        btnGroup.style.display='none';
+        hint.style.display='block';
+      });
+
       row.appendChild(avatar);
       row.appendChild(info);
       row.appendChild(hint);
+      row.appendChild(btnGroup);
       rl.appendChild(row);
 
       // Swipe handling — capture idx in closure
