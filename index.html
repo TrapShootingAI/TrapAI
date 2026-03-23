@@ -157,7 +157,6 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
 .rpt-btn.newround{background:#333;color:#ccc}
 .rpt-btn:hover{opacity:0.85}
 
-/* Card fills available width, no fixed width that causes overflow */
 .rpt-card{
   background:#fff;
   width:100%;
@@ -165,7 +164,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
   margin:24px auto;
   border-radius:10px;
   box-shadow:0 4px 24px rgba(0,0,0,0.10);
-  overflow:visible;       /* was hidden — caused clipping */
+  overflow:visible;
 }
 .rpt-body{padding:36px 36px 48px}
 
@@ -176,7 +175,6 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
 .rpt-meta{display:inline-flex;gap:20px;margin-top:12px;padding:7px 18px;background:#f4f6f8;border-radius:4px;font-family:'Share Tech Mono',monospace;font-size:12px;color:#555;flex-wrap:wrap;justify-content:center}
 .rpt-sec{font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:700;letter-spacing:4px;text-transform:uppercase;color:#1a1a2e;border-left:4px solid #1a1a2e;padding-left:12px;margin:28px 0 14px}
 
-/* Podium */
 .podium-wrap{display:flex;justify-content:center;align-items:flex-end;gap:16px;padding:24px 20px 0;background:linear-gradient(160deg,#e8ecf3,#d5dae5);border-radius:8px}
 .podium-slot{display:flex;flex-direction:column;align-items:center;gap:4px}
 .podium-names{font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:#1a1a2e;text-align:center;line-height:1.3}
@@ -185,7 +183,6 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
 .podium-tie{font-size:10px;background:#fff3cd;color:#7a5000;border:1px solid #ffc107;border-radius:10px;padding:2px 8px;font-family:'Share Tech Mono',monospace;font-weight:700;letter-spacing:1px;margin-bottom:4px}
 .podium-bar{border-radius:6px 6px 0 0;display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:800;color:white;letter-spacing:1px;min-width:100px}
 
-/* Tables — NO overflow wrapper, NO min-width, scale to fit */
 .tbl-wrap{
   border-radius:6px;
   border:1px solid #dde1e8;
@@ -196,7 +193,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
   width:100%;
   border-collapse:collapse;
   font-size:13px;
-  table-layout:fixed;   /* columns share width evenly — no overflow */
+  table-layout:fixed;
 }
 .rtbl thead tr{background:#1a1a2e}
 .rtbl th{
@@ -239,7 +236,6 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
 .stn-v.pp{color:#721c24}
 .tie-tag{display:inline-block;font-size:9px;background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:3px;padding:1px 5px;font-family:'Share Tech Mono',monospace;vertical-align:middle;margin-left:4px}
 
-/* Shot pips — wrap naturally instead of overflowing */
 .shot-pip{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:middle;margin:1px}
 .shot-pip.h{background:#28a745}
 .shot-pip.m{background:#dc3545}
@@ -274,7 +270,6 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
   .podium-bar{-webkit-print-color-adjust:exact!important}
 }
 
-/* Narrow screens — keep table readable */
 @media(max-width:600px){
   .rpt-body{padding:18px 14px 32px}
   .rtbl th,.rtbl td{padding:7px 4px;font-size:10px}
@@ -500,7 +495,6 @@ async function buildSetup(){
   const roster=await ghFetchRoster();
   showSyncing(false);
 
-  // Render roster list (preserve open/closed state)
   const rl=document.getElementById('rosterList');
   const wasVisible=rl.style.display==='block';
   rl.innerHTML='';
@@ -523,12 +517,11 @@ async function buildSetup(){
       info.innerHTML='<div style="font-size:14px;font-weight:600;color:white">'+m.name+'</div>'
         +'<div style="font-size:11px;color:var(--dim);font-family:\'Share Tech Mono\',monospace">'+(m.phone||'no phone')+(m.email?' · '+m.email:'')+'</div>';
 
-      // Swipe hint label
       const hint=document.createElement('div');
       hint.style.cssText='font-size:9px;color:var(--dim);font-family:\'Share Tech Mono\',monospace;text-align:right;line-height:1.4;flex-shrink:0';
       hint.innerHTML='← delete<br>edit →';
 
-      // Desktop hover buttons (hidden on mobile)
+      // Desktop hover buttons
       const btnGroup=document.createElement('div');
       btnGroup.className='roster-btn-group';
       btnGroup.style.cssText='display:none;gap:6px;flex-shrink:0;';
@@ -548,7 +541,6 @@ async function buildSetup(){
       btnGroup.appendChild(editBtn);
       btnGroup.appendChild(delBtn);
 
-      // Show buttons on hover (desktop only)
       row.addEventListener('mouseenter',function(){
         btnGroup.style.display='flex';
         hint.style.display='none';
@@ -564,7 +556,7 @@ async function buildSetup(){
       row.appendChild(btnGroup);
       rl.appendChild(row);
 
-      // Swipe handling — capture idx in closure
+      // Swipe handling
       (function(memberIdx){
         let startX=0,startY=0,moved=false;
         row.addEventListener('touchstart',function(e){
@@ -599,7 +591,6 @@ async function buildSetup(){
   }
   rl.style.display=wasVisible?'block':'none';
 
-  // Render station assignment grid
   const g=document.getElementById('setupGrid');g.innerHTML='';
   for(let i=0;i<5;i++){
     const c=COLORS[i];
@@ -729,14 +720,29 @@ function showReport(data){
       const medalStr=function(rank){return rank===1?'🥇':rank===2?'🥈':rank===3?'🥉':rank+'.';};
       const sep=/(iPhone|iPad|iPod)/i.test(navigator.userAgent)?'&':'?';
       const standings=data.results.map(function(x){return medalStr(x.rank)+' '+x.name+': '+x.hits+'/25 ('+x.pct+'%)';}).join('\n');
+
+      // Build per-station breakdown line: "S1: 4/5 (80%) | S2: 5/5 (100%) | ..."
+      function buildStnLine(r){
+        var parts=[];
+        for(var s=1;s<=5;s++){
+          var shots=(r.stationScores&&r.stationScores[s])||[];
+          if(!shots.length){parts.push('S'+s+': \u2014');continue;}
+          var h=shots.filter(Boolean).length;
+          var pct=Math.round(h/shots.length*100);
+          parts.push('S'+s+': '+h+'/5 ('+pct+'%)');
+        }
+        return parts.join(' | ');
+      }
+
       let idx=0;
       function sendNext(){
         if(idx>=shootersWithPhone.length)return;
         const r=shootersWithPhone[idx++];
         const msg='🎯 Hey '+r.name+'! Your trap scores:\n\n'
-          +medalStr(r.rank)+' YOU: '+r.hits+'/25 ('+r.pct+'%)\n\n'
+          +medalStr(r.rank)+' YOU: '+r.hits+'/25 ('+r.pct+'%)\n'
+          +'Stations: '+buildStnLine(r)+'\n\n'
           +'Full standings:\n'+standings
-          +'\n\n— ClayAI Trap Scoring';
+          +'\n\n— ClayTarget Trap Scoring';
         const a=document.createElement('a');
         a.href='sms:'+r.phone+sep+'body='+encodeURIComponent(msg);
         a.style.display='none';
@@ -945,7 +951,6 @@ function buildReportHTML(data){
       +'</tr>';
   }).join('');
 
-  // Shot-by-shot: pips wrap naturally, no overflow
   const shotRows=data.results.map(r=>{
     const cells=[1,2,3,4,5].map(s=>{
       const shots=(r.stationScores&&r.stationScores[s])||[];
@@ -985,7 +990,7 @@ function buildReportHTML(data){
     +'<th style="width:14%">STATION 1</th><th style="width:14%">STATION 2</th><th style="width:14%">STATION 3</th><th style="width:14%">STATION 4</th><th style="width:14%">STATION 5</th>'
     +'</tr></thead>'
     +'<tbody>'+shotRows+'</tbody></table></div>'
-    +'<div class="rpt-footer"><span>🎯 ClayAI Trap Scoring System</span><span>'+data.shooterCount+' shooters · 5 stations · 25 shots</span><span>'+data.date+'</span></div>'
+    +'<div class="rpt-footer"><span>🎯 ClayTarget Trap Scoring</span><span>'+data.shooterCount+' shooters · 5 stations · 25 shots</span><span>'+data.date+'</span></div>'
     +'</div></div>';
 }
 
@@ -1055,11 +1060,11 @@ function downloadReport(){
   const body=document.getElementById('reportScreen');
   if(!body)return;
   const styles=document.querySelector('style').innerHTML;
-  const html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>ClayAI Round Report</title><style>'+styles+'</style></head><body class="report-mode">'+body.innerHTML+'</body></html>';
+  const html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>ClayTarget Round Report</title><style>'+styles+'</style></head><body class="report-mode">'+body.innerHTML+'</body></html>';
   const blob=new Blob([html],{type:'text/html'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  a.href=url;a.download='ClayAI_Round_'+new Date().toISOString().slice(0,10)+'.html';
+  a.href=url;a.download='ClayTarget_Round_'+new Date().toISOString().slice(0,10)+'.html';
   a.click();URL.revokeObjectURL(url);
 }
 
