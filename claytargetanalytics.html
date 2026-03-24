@@ -38,14 +38,12 @@ header{position:relative;z-index:1;display:flex;align-items:center;justify-conte
 .page{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:16px}
 
 /* ── Shooter filter bar ── */
-.filter-bar{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.filter-bar{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 .filter-label{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--dim);letter-spacing:2px;text-transform:uppercase;flex-shrink:0}
-.shooter-pills{display:flex;gap:8px;flex-wrap:wrap;flex:1}
-.pill{padding:6px 14px;border:1px solid var(--border);border-radius:20px;background:rgba(0,0,0,0.3);font-family:'Exo 2',sans-serif;font-size:13px;font-weight:600;color:var(--dim);cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:7px}
-.pill:hover{border-color:rgba(0,229,255,0.4);color:var(--text)}
-.pill.selected{border-color:var(--accent);color:white;background:rgba(0,229,255,0.08)}
-.pill .pill-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
-.pill .pill-avg{font-family:'Share Tech Mono',monospace;font-size:10px;opacity:0.7}
+.shooter-select{appearance:none;-webkit-appearance:none;background:rgba(0,0,0,0.4);border:1px solid var(--accent);border-radius:6px;padding:10px 40px 10px 14px;color:white;font-family:'Exo 2',sans-serif;font-size:15px;font-weight:600;cursor:pointer;outline:none;min-width:220px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2300e5ff' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;transition:border-color 0.2s,box-shadow 0.2s}
+.shooter-select:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(0,229,255,0.15)}
+.shooter-select option{background:#0d1520;color:white;font-weight:600}
+.select-meta{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--dim)}
 
 /* ── Summary strip ── */
 .summary-strip{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
@@ -193,10 +191,11 @@ header{position:relative;z-index:1;display:flex;align-items:center;justify-conte
   <!-- Main content (hidden until loaded) -->
   <div id="mainContent" style="display:none">
 
-    <!-- Shooter filter pills -->
+    <!-- Shooter dropdown -->
     <div class="filter-bar" id="filterBar" style="display:none">
       <span class="filter-label">Shooter</span>
-      <div class="shooter-pills" id="shooterPills"></div>
+      <select class="shooter-select" id="shooterSelect" onchange="selectShooter(this.value)"></select>
+      <span class="select-meta" id="selectMeta"></span>
     </div>
 
     <!-- Summary strip -->
@@ -252,7 +251,7 @@ async function init() {
   allShooters = aggregateShooters(allRounds);
   selectedShooter = 'ALL';
 
-  buildFilterPills();
+  buildShooterDropdown();
   render();
   show('mainContent');
 }
@@ -447,34 +446,41 @@ function computeStats(s) {
 }
 
 // ── Filter pills ───────────────────────────────────────────
-function buildFilterPills() {
+// ── Shooter dropdown ───────────────────────────────────────
+function buildShooterDropdown() {
   const bar = document.getElementById('filterBar');
-  const container = document.getElementById('shooterPills');
+  const sel = document.getElementById('shooterSelect');
   const shooters = Object.values(allShooters)
     .sort((a, b) => b.weightedAvg - a.weightedAvg);
 
-  if (shooters.length <= 1) { bar.style.display = 'none'; return; }
+  if (!shooters.length) { bar.style.display = 'none'; return; }
   bar.style.display = 'flex';
 
-  let html = `<div class="pill selected" data-name="ALL" onclick="selectShooter('ALL')">
-    <span style="font-size:12px">👥</span> All Shooters
-  </div>`;
-
+  let html = `<option value="ALL">👥 All Shooters</option>`;
   for (const s of shooters) {
-    html += `<div class="pill" data-name="${s.name}" onclick="selectShooter('${s.name.replace(/'/g,"\\'")}')">
-      <div class="pill-dot" style="background:${s.color}"></div>
-      ${s.name}
-      <span class="pill-avg">${s.avg.toFixed(1)}</span>
-    </div>`;
+    html += `<option value="${s.name}">${s.name}  ·  avg ${s.avg.toFixed(1)}/25</option>`;
   }
-  container.innerHTML = html;
+  sel.innerHTML = html;
+  sel.value = selectedShooter;
+  updateSelectMeta();
+}
+
+function updateSelectMeta() {
+  const meta = document.getElementById('selectMeta');
+  if (selectedShooter === 'ALL') {
+    const count = Object.keys(allShooters).length;
+    meta.textContent = count + ' shooter' + (count !== 1 ? 's' : '') + ' · ' + allRounds.length + ' rounds';
+  } else {
+    const s = allShooters[selectedShooter];
+    if (s) meta.textContent = s.totalRounds + ' rounds · best ' + s.best + '/25';
+  }
 }
 
 function selectShooter(name) {
   selectedShooter = name;
-  document.querySelectorAll('.pill').forEach(p => {
-    p.classList.toggle('selected', p.dataset.name === name);
-  });
+  const sel = document.getElementById('shooterSelect');
+  if (sel) sel.value = name;
+  updateSelectMeta();
   render();
 }
 
