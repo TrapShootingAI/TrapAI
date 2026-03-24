@@ -642,6 +642,16 @@ async function finishRound(){
   }
 }
 
+function buildReportURL(data){
+  var d=new Date(data.id||Date.now());
+  var p=function(n){return String(n).padStart(2,'0');};
+  var fname='round_'
+    +d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())
+    +'_'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds())
+    +'_'+(data.id||Date.now())+'.json';
+  return 'https://trapshootingai.github.io/TrapAI/claytargetanalytics.html?report=reports/'+fname;
+}
+
 function showReport(data){
   document.getElementById('wrapper').style.display='none';
   document.getElementById('hchips').style.display='none';
@@ -662,7 +672,37 @@ function showReport(data){
   newBtn.textContent='⟳ New Round';
   newBtn.onclick=function(){resetAll();return false;};
 
+  // ── Share Report button ───────────────────────────────────
+  const shareBtn=document.createElement('button');
+  shareBtn.style.cssText='padding:10px 20px;background:transparent;color:#00e5ff;border:1px solid #00e5ff;border-radius:4px;font-size:15px;font-weight:700;cursor:pointer;transition:background 0.2s;';
+  shareBtn.textContent='🔗 Share Report';
+  shareBtn.onclick=function(){
+    const url=buildReportURL(data);
+    // Try native share sheet first (mobile), fall back to clipboard
+    if(navigator.share){
+      navigator.share({
+        title:'Trap Round — '+data.date,
+        text:'Check out the scorecard for our trap round!',
+        url
+      }).catch(function(){});
+    } else {
+      navigator.clipboard.writeText(url).then(function(){
+        shareBtn.textContent='✓ Copied!';
+        shareBtn.style.background='rgba(0,229,255,0.15)';
+        setTimeout(function(){
+          shareBtn.textContent='🔗 Share Report';
+          shareBtn.style.background='transparent';
+        },2000);
+      }).catch(function(){
+        // Last resort — prompt so they can copy manually
+        window.prompt('Copy this link:',url);
+      });
+    }
+    return false;
+  };
+
   bar.appendChild(label);
+  bar.appendChild(shareBtn);
 
   const shootersWithPhone=(data.results||[]).filter(function(r){return r.phone;});
   if(shootersWithPhone.length){
@@ -673,18 +713,7 @@ function showReport(data){
       const medalStr=function(rank){return rank===1?'🥇':rank===2?'🥈':rank===3?'🥉':rank+'.';};
       const sep=/(iPhone|iPad|iPod)/i.test(navigator.userAgent)?'&':'?';
       const standings=data.results.map(function(x){return medalStr(x.rank)+' '+x.name+': '+x.hits+'/25 ('+x.pct+'%)';}).join('\n');
-
-      // Build the report URL from data.id — same filename logic as saveReportToGitHub
-      function reportURL(){
-        var d=new Date(data.id||Date.now());
-        var p=function(n){return String(n).padStart(2,'0');};
-        var fname='round_'
-          +d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())
-          +'_'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds())
-          +'_'+(data.id||Date.now())+'.json';
-        return 'https://trapshootingai.github.io/TrapAI/claytargetanalytics.html?report=reports/'+fname;
-      }
-      var url=reportURL();
+      const url=buildReportURL(data);
 
       function buildStnLine(r){
         var parts=[];
