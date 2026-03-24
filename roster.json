@@ -2,11 +2,17 @@
   {
     "name": "Mateo Parisi",
     "phone": "7343043647",
-    "email": ""
+    "email": "",
+    "team": "Parisi Family",
+    "teamId": "team_default",
+    "teamColor": "#00e5ff"
   },
   {
     "name": "Mario Parisi",
     "phone": "7347705969",
-    "email": ""
+    "email": "",
+    "team": "Parisi Family",
+    "teamId": "team_default",
+    "teamColor": "#00e5ff"
   }
 ]
