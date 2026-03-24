@@ -71,7 +71,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
 .nsc .nb{font-family:'Share Tech Mono',monospace;font-size:40px;color:white;line-height:1}
 .nsc .no{font-family:'Share Tech Mono',monospace;font-size:14px;color:var(--dim)}
 .score-btns{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
-.big-btn{padding:22px;border-radius:8px;border:2px solid;background:transparent;cursor:pointer;font-family:'Rajdhani',sans-serif;font-size:26px;font-weight:800;letter-spacing:2px;transition:all 0.15s;display:flex;flex-direction:column;align-items:center;touch-action:manipulation;gap:4px}
+.big-btn{padding:22px;border-radius:8px;border:2px solid;background:transparent;cursor:pointer;font-family:'Rajdhani',sans-serif;font-size:26px;font-weight:800;letter-spacing:2px;transition:all 0.15s;display:flex;flex-direction:column;align-items:center;gap:4px}
 .big-btn .kh{font-size:11px;opacity:0.5;font-weight:400}
 .hbtn{border-color:var(--hit);color:var(--hit)}
 .hbtn:hover{background:rgba(0,255,136,0.12);box-shadow:0 0 20px rgba(0,255,136,0.3);transform:scale(0.98)}
@@ -250,7 +250,6 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
 
       <!-- Primary action -->
       <button class="start-btn" onclick="startRound()">🎯 START NEW ROUND</button>
-<a href="https://trapshootingai.github.io/TrapAI/claytargetanalytics.html" style="display:block;width:100%;padding:12px;margin-top:8px;background:transparent;border:1px solid var(--accent);color:var(--accent);font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;letter-spacing:2px;text-transform:uppercase;text-align:center;text-decoration:none;border-radius:6px;transition:background 0.2s" onmouseover="this.style.background='rgba(0,229,255,0.1)'" onmouseout="this.style.background='transparent'">📊 VIEW ANALYTICS</a>
 
       <!-- Saved rounds — collapsible below start button -->
       <div id="savedToggleWrap" style="display:none">
@@ -674,6 +673,19 @@ function showReport(data){
       const medalStr=function(rank){return rank===1?'🥇':rank===2?'🥈':rank===3?'🥉':rank+'.';};
       const sep=/(iPhone|iPad|iPod)/i.test(navigator.userAgent)?'&':'?';
       const standings=data.results.map(function(x){return medalStr(x.rank)+' '+x.name+': '+x.hits+'/25 ('+x.pct+'%)';}).join('\n');
+
+      // Build the report URL from data.id — same filename logic as saveReportToGitHub
+      function reportURL(){
+        var d=new Date(data.id||Date.now());
+        var p=function(n){return String(n).padStart(2,'0');};
+        var fname='round_'
+          +d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())
+          +'_'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds())
+          +'_'+(data.id||Date.now())+'.json';
+        return 'https://trapshootingai.github.io/TrapAI/claytargetanalytics.html?report=reports/'+fname;
+      }
+      var url=reportURL();
+
       function buildStnLine(r){
         var parts=[];
         for(var s=1;s<=5;s++){
@@ -692,6 +704,7 @@ function showReport(data){
           +medalStr(r.rank)+' YOU: '+r.hits+'/25 ('+r.pct+'%)\n'
           +'Stations: '+buildStnLine(r)+'\n\n'
           +'Full standings:\n'+standings
+          +'\n\n📊 Full report: '+url
           +'\n\n— ClayTarget Trap Scoring';
         const a=document.createElement('a');
         a.href='sms:'+r.phone+sep+'body='+encodeURIComponent(msg);
@@ -992,5 +1005,70 @@ function resetAll(){
 
 buildSetup();
 </script>
+
+<!--
+═══════════════════════════════════════════════════════════
+CLOUDFLARE WORKER — one-time update needed for reports/
+═══════════════════════════════════════════════════════════
+Add ?path= query param support so the worker can write
+to reports/ as well as roster.json.
+
+Replace your worker's fetch handler with:
+
+  export default {
+    async fetch(request, env) {
+      const corsHeaders = {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, PUT, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      };
+
+      if (request.method === 'OPTIONS') {
+        return new Response(null, { headers: corsHeaders });
+      }
+
+      const url = new URL(request.url);
+      // Default to roster.json; reports use ?path=reports/round_xxx.json
+      const filePath = url.searchParams.get('path') || 'roster.json';
+      const ghUrl = `https://api.github.com/repos/${env.GH_OWNER}/${env.GH_REPO}/contents/${filePath}`;
+      const ghHeaders = {
+        'Authorization': `token ${env.GH_TOKEN}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'User-Agent': 'ClayTarget-Worker'
+      };
+
+      if (request.method === 'GET') {
+        const res = await fetch(ghUrl, { headers: ghHeaders });
+        const data = await res.json();
+        return new Response(JSON.stringify(data), {
+          status: res.status,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      if (request.method === 'PUT') {
+        const body = await request.json();
+        const res = await fetch(ghUrl, {
+          method: 'PUT',
+          headers: { ...ghHeaders, 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        return new Response(JSON.stringify(data), {
+          status: res.status,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      return new Response('Method not allowed', { status: 405, headers: corsHeaders });
+    }
+  };
+
+After deploying, each completed round will automatically
+appear as reports/round_YYYYMMDD_HHMMSS_<timestamp>.json
+in your TrapAI repo. Every saved round shows a
+"✓ Synced to GitHub" or "○ Local only" badge.
+═══════════════════════════════════════════════════════════
+-->
 </body>
 </html>
