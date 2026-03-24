@@ -462,6 +462,63 @@ function toggleSavedDrawer(){
 }
 
 // ── Setup ─────────────────────────────────────────────────
+// ── Sync today's rounds from GitHub ──────────────────────
+// On every session load, fetch the reports/ directory and pull down
+// any files from today that aren't already in localStorage.
+async function syncTodaysRoundsFromGitHub(){
+  try{
+    const now=new Date();
+    const pad=n=>String(n).padStart(2,'0');
+    const todayPrefix='round_'+now.getFullYear()+pad(now.getMonth()+1)+pad(now.getDate());
+
+    // List the reports directory
+    const dirRes=await fetch(WORKER_URL+'?path=reports');
+    if(!dirRes.ok)return; // silently skip if folder doesn't exist yet
+    const dirData=await dirRes.json();
+    if(!Array.isArray(dirData))return;
+
+    // Filter to today's files only
+    const todayFiles=dirData.filter(f=>f.type==='file'&&f.name.startsWith(todayPrefix)&&f.name.endsWith('.json'));
+    if(!todayFiles.length)return;
+
+    // Load existing local rounds to check which IDs we already have
+    let saved=[];
+    try{saved=JSON.parse(localStorage.getItem('clayai_rounds')||'[]');}catch(e){}
+    const existingIds=new Set(saved.map(r=>String(r.id)));
+
+    let added=0;
+    for(const file of todayFiles){
+      try{
+        // Extract id from filename: round_YYYYMMDD_HHMMSS_<id>.json
+        const idMatch=file.name.match(/_(\d+)\.json$/);
+        if(idMatch&&existingIds.has(idMatch[1]))continue; // already have it
+
+        const res=await fetch(WORKER_URL+'?path='+encodeURIComponent(file.path));
+        if(!res.ok)continue;
+        const json=await res.json();
+        if(!json.content)continue;
+        const data=JSON.parse(atob(json.content.replace(/\n/g,'')));
+        data.ghSynced=true;
+
+        // Avoid duplicates by id
+        if(data.id&&existingIds.has(String(data.id)))continue;
+
+        saved.unshift(data);
+        if(data.id)existingIds.add(String(data.id));
+        added++;
+      }catch(e){console.warn('Could not load',file.name,e.message);}
+    }
+
+    if(added>0){
+      if(saved.length>20)saved.splice(20);
+      localStorage.setItem('clayai_rounds',JSON.stringify(saved));
+      console.log('Synced '+added+' round(s) from GitHub');
+    }
+  }catch(e){
+    console.warn('GitHub round sync failed:',e.message); // non-fatal
+  }
+}
+
 async function buildSetup(){
   showSyncing(true);
   const roster=await ghFetchRoster();
@@ -539,6 +596,7 @@ async function buildSetup(){
       +'<select class="ninput" id="ss'+i+'" style="cursor:pointer">'+options+'</select>';
     g.appendChild(d);
   }
+  await syncTodaysRoundsFromGitHub();
   loadSavedRounds();
 }
 
@@ -948,6 +1006,18 @@ function loadSavedRounds(){
     if(!saved.length){wrap.style.display='none';setMode=false;setSelections.clear();return;}
     wrap.style.display='block';
     document.getElementById('savedBadge').textContent=saved.length;
+
+    // Auto-open drawer if any rounds were saved today
+    const todayStr=new Date().toLocaleDateString();
+    const hasToday=saved.some(r=>{
+      try{return new Date(r.date).toLocaleDateString()===todayStr;}catch(e){return false;}
+    });
+    const drawer=document.getElementById('savedDrawer');
+    const toggleBtn=document.getElementById('savedToggleBtn');
+    if(hasToday&&!drawer.classList.contains('open')){
+      drawer.classList.add('open');
+      toggleBtn.classList.add('open');
+    }
 
     const rounds=saved.slice(0,10);
     let html='';
