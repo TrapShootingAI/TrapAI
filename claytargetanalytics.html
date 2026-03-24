@@ -97,7 +97,11 @@ header{position:relative;z-index:1;display:flex;align-items:center;justify-conte
 .shooter-card{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;transition:border-color 0.2s,opacity 0.3s}
 .shooter-card:hover{border-color:rgba(0,229,255,0.3)}
 .shooter-card.dimmed{opacity:0.2;pointer-events:none}
-.card-header{display:flex;align-items:center;gap:14px;padding:16px 18px 14px;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.2)}
+.card-body{display:none}
+.shooter-card.expanded .card-body{display:block}
+.card-header{display:flex;align-items:center;gap:14px;padding:16px 18px 14px;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.2);cursor:pointer;user-select:none}
+.card-chevron{margin-left:auto;font-size:11px;color:var(--dim);flex-shrink:0;transition:transform 0.2s}
+.shooter-card.expanded .card-chevron{transform:rotate(180deg)}
 .card-avatar{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:800;color:#000;flex-shrink:0}
 .card-name{font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:white;letter-spacing:1px}
 .card-meta{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--dim);margin-top:2px}
@@ -584,7 +588,7 @@ function renderCard(s) {
     : fmtDate(s.rounds[0].ts);
   const avgColor = s.avg >= 20 ? 'var(--hit)' : s.avg >= 15 ? 'var(--gold)' : 'var(--miss)';
 
-  let html = `<div class="shooter-card">`;
+  let html = `<div class="shooter-card" onclick="this.classList.toggle('expanded');event.stopPropagation()">`;
 
   // Header
   html += `<div class="card-header">
@@ -594,7 +598,10 @@ function renderCard(s) {
       <div class="card-meta">${s.totalRounds} round${s.totalRounds > 1 ? 's' : ''} · ${dateRange}</div>
     </div>
     ${s.totalRounds >= 3 ? `<div class="trend-pill ${trendClass}">${trendLabel}</div>` : ''}
+    <span class="card-chevron">▼</span>
   </div>`;
+
+  html += `<div class="card-body">`;
 
   // Stats row
   html += `<div class="stat-row">
@@ -672,7 +679,8 @@ function renderCard(s) {
     </div>`;
   }
 
-  html += `</div>`;
+  html += `</div>`; // close card-body
+  html += `</div>`; // close shooter-card
   return html;
 }
 
