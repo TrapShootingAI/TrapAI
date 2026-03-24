@@ -113,9 +113,13 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
 .lbadge.m{background:rgba(255,51,85,0.2);color:var(--miss);border:1px solid rgba(255,51,85,0.3)}
 .linfo{flex:1;color:var(--text)}
 .lt{color:var(--dim);font-size:10px}
-.saved-item{display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:5px;margin-bottom:6px;transition:border-color 0.2s}
+.saved-item{display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:5px;margin-bottom:6px;transition:all 0.2s}
 .saved-item:hover{border-color:rgba(0,229,255,0.3)}
+.saved-item.set-selected{border-color:var(--accent);background:rgba(0,229,255,0.07)}
 .saved-clickable{flex:1;cursor:pointer}
+.set-check{width:22px;height:22px;border:2px solid var(--border);border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#000;cursor:pointer;transition:all 0.2s}
+.set-check.on{background:var(--accent);border-color:var(--accent)}
+.set-action-bar{margin-top:10px;padding:10px 12px;background:rgba(0,229,255,0.06);border:1px solid rgba(0,229,255,0.2);border-radius:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .si-date{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--dim)}
 .si-shooters{font-size:13px;font-weight:600;color:white;margin:2px 0}
 .si-score{font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--accent)}
@@ -332,6 +336,9 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
 const COLORS=['#00e5ff','#ff6b35','#a855f7','#22c55e','#f59e0b'];
 const SPS=5,STNS=5;
 let shooters=[],scores={};
+// ── Set mode state ────────────────────────────────────────
+let setMode=false;
+let setSelections=new Set();
 let rotation=1,roundShot=1,shooterTurnIdx=0;
 let waitRotate=false,roundDone=false,shootLog=[];
 let activeOrder=[],roundStartTime=null,roundResults=null;
@@ -938,15 +945,39 @@ function loadSavedRounds(){
   try{
     const saved=JSON.parse(localStorage.getItem('clayai_rounds')||'[]');
     const wrap=document.getElementById('savedToggleWrap');
-    if(!saved.length){wrap.style.display='none';return;}
+    if(!saved.length){wrap.style.display='none';setMode=false;setSelections.clear();return;}
     wrap.style.display='block';
     document.getElementById('savedBadge').textContent=saved.length;
-    document.getElementById('savedList').innerHTML=saved.slice(0,10).map((r,i)=>{
+
+    const rounds=saved.slice(0,10);
+    let html='';
+
+    // Header row with Build Set toggle
+    html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
+      +'<span style="font-family:\'Share Tech Mono\',monospace;font-size:11px;color:var(--dim)">'+saved.length+' round'+(saved.length!==1?'s':'')+' saved</span>'
+      +'<button class="btn" onclick="toggleSetMode()" style="padding:4px 12px;font-size:12px">'
+      +(setMode?'✕ Cancel':'📋 Build Set')+'</button>'
+      +'</div>';
+
+    // Round items
+    html+=rounds.map((r,i)=>{
       const top=r.results[0];
       const names=r.results.map(x=>x.name).join(', ');
       const syncLine=r.ghSynced
-        ?'<div class="si-sync ok">✓ Synced to GitHub</div>'
+        ?'<div class="si-sync ok">✓ Synced</div>'
         :'<div class="si-sync pend">○ Local only</div>';
+      const isSel=setSelections.has(i);
+      if(setMode){
+        return '<div class="saved-item'+(isSel?' set-selected':'')+'" onclick="toggleSetSelection('+i+')" style="cursor:pointer">'
+          +'<div class="set-check'+(isSel?' on':'')+'">'+( isSel?'✓':'')+'</div>'
+          +'<div style="flex:1">'
+          +'<div class="si-date">'+r.date+'</div>'
+          +'<div class="si-shooters">'+names+'</div>'
+          +'<div class="si-score">🥇 '+top.name+': '+top.hits+'/25'+(r.hasTie?' · TIE':'')+'</div>'
+          +syncLine
+          +'</div>'
+          +'</div>';
+      }
       return '<div class="saved-item">'
         +'<div class="saved-clickable" onclick="viewSavedRound('+i+')">'
         +'<div class="si-date">'+r.date+'</div>'
@@ -957,7 +988,54 @@ function loadSavedRounds(){
         +'<button class="del-btn" onclick="deleteSavedRound('+i+')" title="Delete">✕</button>'
         +'</div>';
     }).join('');
+
+    // Set action bar — shows when 2+ rounds selected
+    if(setMode){
+      const n=setSelections.size;
+      html+='<div class="set-action-bar">'
+        +'<span style="font-family:\'Share Tech Mono\',monospace;font-size:12px;color:var(--accent);flex:1">'
+        +(n<2?'Select 2 or more rounds':n+' rounds selected')+'</span>'
+        +'<button class="start-btn" style="padding:10px 18px;font-size:14px;width:auto;'+(n<2?'opacity:0.35;cursor:default':'')+'" '
+        +(n>=2?'onclick="viewSetReport()"':'disabled')+'>'
+        +'📊 View Set Report'
+        +'</button>'
+        +'</div>';
+    }
+
+    document.getElementById('savedList').innerHTML=html;
   }catch(e){document.getElementById('savedToggleWrap').style.display='none';}
+}
+
+function toggleSetMode(){
+  setMode=!setMode;
+  setSelections.clear();
+  loadSavedRounds();
+}
+
+function toggleSetSelection(idx){
+  if(setSelections.has(idx))setSelections.delete(idx);
+  else setSelections.add(idx);
+  loadSavedRounds();
+}
+
+function reportPathFromId(id){
+  var d=new Date(id);
+  var p=function(n){return String(n).padStart(2,'0');};
+  return 'reports/round_'
+    +d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())
+    +'_'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds())
+    +'_'+id+'.json';
+}
+
+function viewSetReport(){
+  try{
+    const saved=JSON.parse(localStorage.getItem('clayai_rounds')||'[]');
+    const selected=Array.from(setSelections).sort((a,b)=>a-b).map(i=>saved[i]).filter(Boolean);
+    if(selected.length<2){alert('Select at least 2 rounds.');return;}
+    // Check all rounds have an id to build the path
+    const params=selected.map(r=>'r='+encodeURIComponent(reportPathFromId(r.id))).join('&');
+    window.open('https://trapshootingai.github.io/TrapAI/setreport.html?'+params,'_blank');
+  }catch(e){alert('Could not build set: '+e.message);}
 }
 
 function deleteSavedRound(idx){
