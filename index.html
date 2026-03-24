@@ -216,6 +216,21 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
   .rtbl th,.rtbl td{padding:7px 4px;font-size:10px}
   .rpt-title{font-size:26px}
 }
+/* ── Team styles ── */
+.team-section{margin-bottom:10px;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.team-header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(0,0,0,0.3);cursor:pointer;user-select:none;transition:background 0.2s}
+.team-header:hover{background:rgba(0,0,0,0.4)}
+.team-color-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0}
+.team-name{font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:white;letter-spacing:1px;flex:1}
+.team-count{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--dim)}
+.team-actions{display:flex;gap:6px}
+.team-actions .btn{padding:4px 10px;font-size:11px}
+.team-members{padding:6px 8px;background:rgba(0,0,0,0.15)}
+.team-add-member{display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;color:var(--accent);font-family:'Share Tech Mono',monospace;font-size:12px;border:1px dashed rgba(0,229,255,0.3);border-radius:4px;margin:6px 0;transition:background 0.2s}
+.team-add-member:hover{background:rgba(0,229,255,0.06)}
+.color-swatch{width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all 0.2s;display:inline-flex;align-items:center;justify-content:center}
+.color-swatch.selected{border-color:white;transform:scale(1.15);box-shadow:0 0 8px rgba(255,255,255,0.3)}
+.team-badge{display:inline-block;font-size:9px;padding:1px 6px;border-radius:3px;font-family:'Share Tech Mono',monospace;font-weight:700;margin-left:6px;vertical-align:middle;opacity:0.8}
 </style>
 </head>
 <body>
@@ -245,7 +260,8 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
         <div class="ptitle" style="margin-bottom:0">👥 Assign Stations</div>
         <div style="display:flex;gap:8px">
-          <button class="btn" onclick="toggleRoster()" id="rosterToggleBtn">👤 Manage Team</button>
+          <button class="btn" onclick="toggleRoster()" id="rosterToggleBtn">👥 Manage Teams</button>
+          <button class="btn" onclick="openAddTeam()">+ Add Team</button>
           <button class="btn" onclick="openAddMember()">+ Add Member</button>
         </div>
       </div>
@@ -280,6 +296,23 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
       <div style="display:flex;gap:10px">
         <button class="start-btn" style="font-size:15px;padding:12px" onclick="saveMember()">Save</button>
         <button class="btn" style="flex:1;padding:12px" onclick="closeModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add/Edit Team Modal -->
+  <div id="teamModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:500;align-items:center;justify-content:center">
+    <div style="background:#0d1520;border:1px solid #1a2a3a;border-radius:10px;padding:24px;width:90%;max-width:360px;position:relative">
+      <div class="ptitle" id="teamModalTitle" style="margin-bottom:16px">Add Team</div>
+      <input type="text" class="ninput" id="tName" placeholder="Team name *" style="margin-bottom:10px">
+      <div style="margin-bottom:16px">
+        <label style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--dim);display:block;margin-bottom:6px">Team Color</label>
+        <div id="teamColorPicker" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+      </div>
+      <input type="hidden" id="tEditId" value="">
+      <div style="display:flex;gap:10px">
+        <button class="start-btn" style="font-size:15px;padding:12px" onclick="saveTeam()">Save</button>
+        <button class="btn" style="flex:1;padding:12px" onclick="closeTeamModal()">Cancel</button>
       </div>
     </div>
   </div>
@@ -334,6 +367,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
 
 <script>
 const COLORS=['#00e5ff','#ff6b35','#a855f7','#22c55e','#f59e0b'];
+const TEAM_COLORS=['#00e5ff','#ff6b35','#a855f7','#22c55e','#f59e0b','#e91e63','#3f51b5','#009688','#ff9800','#795548'];
 const SPS=5,STNS=5;
 let shooters=[],scores={};
 // ── Set mode state ────────────────────────────────────────
@@ -342,6 +376,7 @@ let setSelections=new Set();
 let rotation=1,roundShot=1,shooterTurnIdx=0;
 let waitRotate=false,roundDone=false,shootLog=[];
 let activeOrder=[],roundStartTime=null,roundResults=null;
+let selectedTeamColor='#00e5ff';
 
 // ── Cloudflare Worker ─────────────────────────────────────
 const WORKER_URL='https://clayai-roster.mario-parisi.workers.dev';
@@ -401,32 +436,152 @@ async function ghSaveRoster(roster){
   }
 }
 
+// ── Teams sync ────────────────────────────────────────────
+async function ghFetchTeams(){
+  try{
+    const res=await fetch(WORKER_URL+'?path=teams.json',{method:'GET'});
+    if(!res.ok)throw new Error('fetch failed');
+    const json=await res.json();
+    const decoded=JSON.parse(atob(json.content.replace(/\n/g,'')));
+    localStorage.setItem('clayai_teams',JSON.stringify(decoded));
+    localStorage.setItem('clayai_teams_sha',json.sha);
+    return decoded;
+  }catch(e){
+    try{return JSON.parse(localStorage.getItem('clayai_teams')||'[]');}catch(e2){return [];}
+  }
+}
+
+async function ghSaveTeams(teams){
+  const sha=localStorage.getItem('clayai_teams_sha')||'';
+  const content=btoa(unescape(encodeURIComponent(JSON.stringify(teams,null,2))));
+  const body={message:'Update teams',content};
+  if(sha)body.sha=sha;
+  try{
+    const res=await fetch(WORKER_URL+'?path=teams.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(!res.ok){const e=await res.json();throw new Error(e.message||'save failed');}
+    const json=await res.json();
+    localStorage.setItem('clayai_teams_sha',json.content.sha);
+    localStorage.setItem('clayai_teams',JSON.stringify(teams));
+  }catch(e){
+    localStorage.setItem('clayai_teams',JSON.stringify(teams));
+  }
+}
+
+function loadTeams(){
+  try{return JSON.parse(localStorage.getItem('clayai_teams')||'[]');}catch(e){return [];}
+}
+
+// ── Team CRUD ─────────────────────────────────────────────
+function openAddTeam(){
+  document.getElementById('tName').value='';
+  document.getElementById('tEditId').value='';
+  document.getElementById('teamModalTitle').textContent='Add Team';
+  selectedTeamColor=TEAM_COLORS[loadTeams().length%TEAM_COLORS.length];
+  renderTeamColorPicker();
+  document.getElementById('teamModal').style.display='flex';
+}
+function openEditTeam(teamId){
+  const teams=loadTeams();const t=teams.find(x=>x.id===teamId);if(!t)return;
+  document.getElementById('tName').value=t.name||'';
+  document.getElementById('tEditId').value=teamId;
+  document.getElementById('teamModalTitle').textContent='Edit Team';
+  selectedTeamColor=t.color||'#00e5ff';
+  renderTeamColorPicker();
+  document.getElementById('teamModal').style.display='flex';
+}
+function closeTeamModal(){document.getElementById('teamModal').style.display='none';}
+function renderTeamColorPicker(){
+  const el=document.getElementById('teamColorPicker');
+  el.innerHTML=TEAM_COLORS.map(c=>
+    '<div class="color-swatch'+(c===selectedTeamColor?' selected':'')+'" style="background:'+c+'" onclick="pickTeamColor(\''+c+'\')"></div>'
+  ).join('');
+}
+function pickTeamColor(c){selectedTeamColor=c;renderTeamColorPicker();}
+
+async function saveTeam(){
+  const name=document.getElementById('tName').value.trim();
+  if(!name){alert('Team name is required.');return;}
+  const editId=document.getElementById('tEditId').value;
+  const teams=loadTeams();
+  if(editId){
+    const t=teams.find(x=>x.id===editId);
+    if(t){t.name=name;t.color=selectedTeamColor;}
+  }else{
+    teams.push({id:'team_'+Date.now(),name,color:selectedTeamColor,members:[]});
+  }
+  closeTeamModal();showSyncing(true);
+  await ghSaveTeams(teams);
+  // Also sync roster.json to keep flat roster in sync
+  await syncRosterFromTeams(teams);
+  showSyncing(false);buildSetup();
+}
+
+async function deleteTeam(teamId){
+  const teams=loadTeams();const t=teams.find(x=>x.id===teamId);
+  if(!t)return;
+  if(!confirm('Delete team "'+t.name+'"? Members will be removed.'))return;
+  const idx=teams.findIndex(x=>x.id===teamId);
+  teams.splice(idx,1);
+  showSyncing(true);
+  await ghSaveTeams(teams);
+  await syncRosterFromTeams(teams);
+  showSyncing(false);buildSetup();
+}
+
+function openAddMemberToTeam(teamId){
+  document.getElementById('mName').value='';
+  document.getElementById('mPhone').value='';
+  document.getElementById('mEmail').value='';
+  document.getElementById('mEditIdx').value='-1';
+  document.getElementById('modalTitle').textContent='Add Member';
+  document.getElementById('memberModal').dataset.teamId=teamId;
+  document.getElementById('memberModal').style.display='flex';
+}
+
+// Build flat roster from all teams for backward compatibility
+async function syncRosterFromTeams(teams){
+  const roster=[];
+  for(const t of teams){
+    for(const m of t.members){
+      roster.push({name:m.name,phone:m.phone||'',email:m.email||'',team:t.name,teamId:t.id,teamColor:t.color});
+    }
+  }
+  await ghSaveRoster(roster);
+}
+
+function findMemberTeam(teams,memberName){
+  for(const t of teams){
+    for(const m of t.members){
+      if(m.name===memberName)return t;
+    }
+  }
+  return null;
+}
+
 // ── Roster UI ─────────────────────────────────────────────
 function toggleRoster(){
   const rl=document.getElementById('rosterList');
   const btn=document.getElementById('rosterToggleBtn');
   const visible=rl.style.display!=='none';
   rl.style.display=visible?'none':'block';
-  btn.textContent=visible?'👤 Manage Team':'👤 Hide Team';
+  btn.textContent=visible?'👥 Manage Teams':'👥 Hide Teams';
 }
 function loadRoster(){
   try{return JSON.parse(localStorage.getItem('clayai_roster')||'[]');}catch(e){return [];}
 }
 function openAddMember(){
+  const teams=loadTeams();
+  if(!teams.length){
+    alert('Please create a team first, then add members to it.');
+    openAddTeam();
+    return;
+  }
   document.getElementById('mName').value='';
   document.getElementById('mPhone').value='';
   document.getElementById('mEmail').value='';
   document.getElementById('mEditIdx').value='-1';
   document.getElementById('modalTitle').textContent='Add Member';
-  document.getElementById('memberModal').style.display='flex';
-}
-function openEditMember(idx){
-  const roster=loadRoster();const m=roster[idx];
-  document.getElementById('mName').value=m.name||'';
-  document.getElementById('mPhone').value=m.phone||'';
-  document.getElementById('mEmail').value=m.email||'';
-  document.getElementById('mEditIdx').value=idx;
-  document.getElementById('modalTitle').textContent='Edit Member';
+  document.getElementById('memberModal').dataset.teamId=teams[0].id;
   document.getElementById('memberModal').style.display='flex';
 }
 function closeModal(){document.getElementById('memberModal').style.display='none';}
@@ -436,20 +591,66 @@ async function saveMember(){
   const phone=document.getElementById('mPhone').value.trim();
   const email=document.getElementById('mEmail').value.trim();
   const idx=parseInt(document.getElementById('mEditIdx').value);
-  const roster=loadRoster();
-  if(idx>=0)roster[idx]={name,phone,email};
-  else roster.push({name,phone,email});
-  closeModal();showSyncing(true);
-  await ghSaveRoster(roster);
+  const teamId=document.getElementById('memberModal').dataset.teamId||'';
+  const teams=loadTeams();
+
+  if(teamId){
+    // Adding/editing member within a team
+    const team=teams.find(t=>t.id===teamId);
+    if(!team){alert('Team not found.');return;}
+    if(idx>=0){
+      team.members[idx]={name,phone,email};
+    }else{
+      team.members.push({name,phone,email});
+    }
+    closeModal();showSyncing(true);
+    await ghSaveTeams(teams);
+    await syncRosterFromTeams(teams);
+    showSyncing(false);buildSetup();
+  }else{
+    // Legacy: adding member without a team — create an "Unassigned" team or add to first team
+    let unassigned=teams.find(t=>t.id==='team_unassigned');
+    if(!unassigned){
+      unassigned={id:'team_unassigned',name:'Unassigned',color:'#4a6a7a',members:[]};
+      teams.push(unassigned);
+    }
+    if(idx>=0){
+      // Find and update member across all teams
+      for(const t of teams){
+        if(idx<t.members.length){t.members[idx]={name,phone,email};break;}
+        idx-=t.members.length;
+      }
+    }else{
+      unassigned.members.push({name,phone,email});
+    }
+    closeModal();showSyncing(true);
+    await ghSaveTeams(teams);
+    await syncRosterFromTeams(teams);
+    showSyncing(false);buildSetup();
+  }
+}
+async function deleteMember(teamId,memberIdx){
+  const teams=loadTeams();
+  const team=teams.find(t=>t.id===teamId);
+  if(!team||!team.members[memberIdx])return;
+  if(!confirm('Delete '+team.members[memberIdx].name+'?'))return;
+  team.members.splice(memberIdx,1);
+  showSyncing(true);
+  await ghSaveTeams(teams);
+  await syncRosterFromTeams(teams);
   showSyncing(false);buildSetup();
 }
-async function deleteMember(idx){
-  const roster=loadRoster();const member=roster[idx];
-  if(!member){alert('Member not found.');return;}
-  if(!confirm('Delete '+member.name+'?'))return;
-  roster.splice(idx,1);showSyncing(true);
-  await ghSaveRoster(roster);
-  showSyncing(false);buildSetup();
+function openEditMemberInTeam(teamId,memberIdx){
+  const teams=loadTeams();const team=teams.find(t=>t.id===teamId);
+  if(!team||!team.members[memberIdx])return;
+  const m=team.members[memberIdx];
+  document.getElementById('mName').value=m.name||'';
+  document.getElementById('mPhone').value=m.phone||'';
+  document.getElementById('mEmail').value=m.email||'';
+  document.getElementById('mEditIdx').value=memberIdx;
+  document.getElementById('modalTitle').textContent='Edit Member';
+  document.getElementById('memberModal').dataset.teamId=teamId;
+  document.getElementById('memberModal').style.display='flex';
 }
 function showSyncing(on){document.getElementById('syncStatus').style.display=on?'block':'none';}
 
@@ -521,92 +722,155 @@ async function syncTodaysRoundsFromGitHub(){
 
 async function buildSetup(){
   showSyncing(true);
+  const teams=await ghFetchTeams();
   const roster=await ghFetchRoster();
   showSyncing(false);
 
   const rl=document.getElementById('rosterList');
   const wasVisible=rl.style.display==='block';
   rl.innerHTML='';
-  if(!roster.length){
+
+  if(!teams.length){
     const empty=document.createElement('div');
     empty.style.cssText='text-align:center;color:var(--dim);font-size:13px;padding:14px;font-family:\'Share Tech Mono\',monospace';
-    empty.textContent='No members yet — tap + Add Member';
+    empty.textContent='No teams yet — tap + Add Team to get started';
     rl.appendChild(empty);
   } else {
-    roster.forEach(function(m,i){
-      const row=document.createElement('div');
-      row.style.cssText='display:flex;align-items:center;gap:10px;padding:9px 12px;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:5px;margin-bottom:6px;position:relative;z-index:10;cursor:pointer;transition:background 0.2s,transform 0.25s;';
-      const avatar=document.createElement('div');
-      avatar.style.cssText='width:32px;height:32px;border-radius:50%;background:'+COLORS[i%COLORS.length]+';display:flex;align-items:center;justify-content:center;font-family:\'Rajdhani\',sans-serif;font-size:15px;font-weight:700;color:#000;flex-shrink:0';
-      avatar.textContent=m.name.charAt(0);
-      const info=document.createElement('div');
-      info.style.cssText='flex:1';
-      info.innerHTML='<div style="font-size:14px;font-weight:600;color:white">'+m.name+'</div>'
-        +'<div style="font-size:11px;color:var(--dim);font-family:\'Share Tech Mono\',monospace">'+(m.phone||'no phone')+(m.email?' · '+m.email:'')+'</div>';
-      const hint=document.createElement('div');
-      hint.style.cssText='font-size:9px;color:var(--dim);font-family:\'Share Tech Mono\',monospace;text-align:right;line-height:1.4;flex-shrink:0';
-      hint.innerHTML='← delete<br>edit →';
-      const btnGroup=document.createElement('div');
-      btnGroup.style.cssText='display:none;gap:6px;flex-shrink:0;';
-      const editBtn=document.createElement('button');
-      editBtn.className='btn';editBtn.style.cssText='padding:5px 12px;font-size:12px;cursor:pointer;';
-      editBtn.textContent='Edit';editBtn.onclick=function(e){e.stopPropagation();openEditMember(i);};
-      const delBtn=document.createElement('button');
-      delBtn.className='btn d';delBtn.style.cssText='padding:5px 12px;font-size:12px;cursor:pointer;';
-      delBtn.textContent='Delete';delBtn.onclick=function(e){e.stopPropagation();deleteMember(i);};
-      btnGroup.appendChild(editBtn);btnGroup.appendChild(delBtn);
-      row.addEventListener('mouseenter',function(){btnGroup.style.display='flex';hint.style.display='none';});
-      row.addEventListener('mouseleave',function(){btnGroup.style.display='none';hint.style.display='block';});
-      row.appendChild(avatar);row.appendChild(info);row.appendChild(hint);row.appendChild(btnGroup);
-      rl.appendChild(row);
-      (function(memberIdx){
-        let startX=0,startY=0,moved=false;
-        row.addEventListener('touchstart',function(e){startX=e.touches[0].clientX;startY=e.touches[0].clientY;moved=false;row.style.transition='none';},{passive:true});
-        row.addEventListener('touchmove',function(e){
-          const dx=e.touches[0].clientX-startX;const dy=e.touches[0].clientY-startY;
-          if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>8){
-            moved=true;row.style.transform='translateX('+Math.max(-80,Math.min(80,dx))+'px)';
-            if(dx<-20)row.style.background='rgba(255,51,85,0.25)';
-            else if(dx>20)row.style.background='rgba(0,229,255,0.15)';
-            else row.style.background='rgba(0,0,0,0.2)';
-          }
-        },{passive:true});
-        row.addEventListener('touchend',function(e){
-          const dx=e.changedTouches[0].clientX-startX;
-          row.style.transition='transform 0.25s,background 0.25s';
-          row.style.transform='translateX(0)';row.style.background='rgba(0,0,0,0.2)';
-          if(moved){
-            if(dx<-60)setTimeout(function(){deleteMember(memberIdx);},250);
-            else if(dx>60)setTimeout(function(){openEditMember(memberIdx);},250);
-          }
-        },{passive:true});
-      })(i);
+    teams.forEach(function(team){
+      const section=document.createElement('div');
+      section.className='team-section';
+
+      // Team header
+      const header=document.createElement('div');
+      header.className='team-header';
+      header.innerHTML='<div class="team-color-dot" style="background:'+team.color+'"></div>'
+        +'<div class="team-name">'+team.name+'</div>'
+        +'<div class="team-count">'+team.members.length+' member'+(team.members.length!==1?'s':'')+'</div>';
+
+      const actions=document.createElement('div');
+      actions.className='team-actions';
+      actions.innerHTML='<button class="btn" onclick="event.stopPropagation();openEditTeam(\''+team.id+'\')">Edit</button>'
+        +'<button class="btn d" onclick="event.stopPropagation();deleteTeam(\''+team.id+'\')">Delete</button>';
+      header.appendChild(actions);
+
+      // Toggle members on click
+      header.onclick=function(){
+        const body=section.querySelector('.team-members');
+        body.style.display=body.style.display==='none'?'block':'none';
+      };
+      section.appendChild(header);
+
+      // Members body
+      const membersDiv=document.createElement('div');
+      membersDiv.className='team-members';
+      membersDiv.style.display='block';
+
+      team.members.forEach(function(m,mi){
+        const row=document.createElement('div');
+        row.style.cssText='display:flex;align-items:center;gap:10px;padding:9px 12px;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:5px;margin-bottom:4px;position:relative;z-index:10;cursor:pointer;transition:background 0.2s,transform 0.25s;';
+        const avatar=document.createElement('div');
+        avatar.style.cssText='width:32px;height:32px;border-radius:50%;background:'+team.color+';display:flex;align-items:center;justify-content:center;font-family:\'Rajdhani\',sans-serif;font-size:15px;font-weight:700;color:#000;flex-shrink:0';
+        avatar.textContent=m.name.charAt(0);
+        const info=document.createElement('div');
+        info.style.cssText='flex:1';
+        info.innerHTML='<div style="font-size:14px;font-weight:600;color:white">'+m.name+'</div>'
+          +'<div style="font-size:11px;color:var(--dim);font-family:\'Share Tech Mono\',monospace">'+(m.phone||'no phone')+(m.email?' · '+m.email:'')+'</div>';
+        const hint=document.createElement('div');
+        hint.style.cssText='font-size:9px;color:var(--dim);font-family:\'Share Tech Mono\',monospace;text-align:right;line-height:1.4;flex-shrink:0';
+        hint.innerHTML='← delete<br>edit →';
+        const btnGroup=document.createElement('div');
+        btnGroup.style.cssText='display:none;gap:6px;flex-shrink:0;';
+        const editBtn=document.createElement('button');
+        editBtn.className='btn';editBtn.style.cssText='padding:5px 12px;font-size:12px;cursor:pointer;';
+        editBtn.textContent='Edit';editBtn.onclick=function(e){e.stopPropagation();openEditMemberInTeam(team.id,mi);};
+        const delBtn=document.createElement('button');
+        delBtn.className='btn d';delBtn.style.cssText='padding:5px 12px;font-size:12px;cursor:pointer;';
+        delBtn.textContent='Delete';delBtn.onclick=function(e){e.stopPropagation();deleteMember(team.id,mi);};
+        btnGroup.appendChild(editBtn);btnGroup.appendChild(delBtn);
+        row.addEventListener('mouseenter',function(){btnGroup.style.display='flex';hint.style.display='none';});
+        row.addEventListener('mouseleave',function(){btnGroup.style.display='none';hint.style.display='block';});
+        row.appendChild(avatar);row.appendChild(info);row.appendChild(hint);row.appendChild(btnGroup);
+        membersDiv.appendChild(row);
+
+        // Touch swipe
+        (function(tid,midx){
+          let startX=0,startY=0,moved=false;
+          row.addEventListener('touchstart',function(e){startX=e.touches[0].clientX;startY=e.touches[0].clientY;moved=false;row.style.transition='none';},{passive:true});
+          row.addEventListener('touchmove',function(e){
+            const dx=e.touches[0].clientX-startX;const dy=e.touches[0].clientY-startY;
+            if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>8){
+              moved=true;row.style.transform='translateX('+Math.max(-80,Math.min(80,dx))+'px)';
+              if(dx<-20)row.style.background='rgba(255,51,85,0.25)';
+              else if(dx>20)row.style.background='rgba(0,229,255,0.15)';
+              else row.style.background='rgba(0,0,0,0.2)';
+            }
+          },{passive:true});
+          row.addEventListener('touchend',function(e){
+            const dx=e.changedTouches[0].clientX-startX;
+            row.style.transition='transform 0.25s,background 0.25s';
+            row.style.transform='translateX(0)';row.style.background='rgba(0,0,0,0.2)';
+            if(moved){
+              if(dx<-60)setTimeout(function(){deleteMember(tid,midx);},250);
+              else if(dx>60)setTimeout(function(){openEditMemberInTeam(tid,midx);},250);
+            }
+          },{passive:true});
+        })(team.id,mi);
+      });
+
+      // Add member button for this team
+      const addBtn=document.createElement('div');
+      addBtn.className='team-add-member';
+      addBtn.textContent='+ Add Member to '+team.name;
+      addBtn.onclick=function(e){e.stopPropagation();openAddMemberToTeam(team.id);};
+      membersDiv.appendChild(addBtn);
+
+      section.appendChild(membersDiv);
+      rl.appendChild(section);
     });
   }
   rl.style.display=wasVisible?'block':'none';
+
+  // Build station dropdowns grouped by team
+  const allMembers=[];
+  teams.forEach(function(t){
+    t.members.forEach(function(m){
+      allMembers.push({name:m.name,phone:m.phone||'',email:m.email||'',team:t.name,teamId:t.id,teamColor:t.color});
+    });
+  });
 
   const g=document.getElementById('setupGrid');g.innerHTML='';
   for(let i=0;i<5;i++){
     const c=COLORS[i];const d=document.createElement('div');
     d.className='scard on';d.id='sc'+i;
-    const options='<option value="">— Empty —</option>'
-      +roster.map((m,mi)=>'<option value="'+mi+'">'+m.name+'</option>').join('');
+    let options='<option value="">— Empty —</option>';
+    teams.forEach(function(t){
+      if(t.members.length){
+        options+='<optgroup label="'+t.name+'">';
+        t.members.forEach(function(m){
+          const mi=allMembers.findIndex(function(am){return am.name===m.name&&am.teamId===t.id;});
+          options+='<option value="'+mi+'">'+m.name+'</option>';
+        });
+        options+='</optgroup>';
+      }
+    });
     d.innerHTML='<div class="ctop"><div class="snum" style="background:'+c+'">'+(i+1)+'</div>'
       +'<span style="font-family:\'Rajdhani\',sans-serif;font-size:15px;font-weight:600;color:white">Station '+(i+1)+'</span></div>'
       +'<select class="ninput" id="ss'+i+'" style="cursor:pointer">'+options+'</select>';
     g.appendChild(d);
   }
+  // Store allMembers for startRound
+  window._allMembers=allMembers;
   await syncTodaysRoundsFromGitHub();
   loadSavedRounds();
 }
 
 // ── Round logic ───────────────────────────────────────────
 function startRound(){
-  const roster=loadRoster();shooters=[];
+  const allMembers=window._allMembers||[];shooters=[];
   for(let i=0;i<5;i++){
     const sel=document.getElementById('ss'+i);const val=sel?sel.value:'';
-    if(val!==''){const mi=parseInt(val);const m=roster[mi];
-      shooters.push({name:m.name,color:COLORS[i],startStation:i+1,phone:m.phone||'',email:m.email||''});}
+    if(val!==''){const mi=parseInt(val);const m=allMembers[mi];
+      shooters.push({name:m.name,color:COLORS[i],startStation:i+1,phone:m.phone||'',email:m.email||'',team:m.team||'',teamId:m.teamId||'',teamColor:m.teamColor||''});}
   }
   if(!shooters.length){alert('Assign at least 1 shooter to a station!');return;}
   scores={};shootLog=[];
@@ -688,7 +952,10 @@ async function finishRound(){
       pct:Math.round(r.hits/25*100),
       stationScores:r.stnScores,
       tiedWith:r.tiedWith,
-      phone:shooters[r.si].phone||''
+      phone:shooters[r.si].phone||'',
+      team:shooters[r.si].team||'',
+      teamId:shooters[r.si].teamId||'',
+      teamColor:shooters[r.si].teamColor||''
     })),
     hasTie,shooterCount:shooters.length
   };
@@ -921,8 +1188,9 @@ function buildReportHTML(data){
       const h=shots.filter(Boolean).length;
       return '<td class="stn-v '+(h===5?'pf':h>=3?'pg':'pp')+'">'+h+'/5</td>';
     }).join('');
+    const teamBadge=r.team?'<span class="team-badge" style="background:'+((r.teamColor||'#4a6a7a')+'22')+';color:'+(r.teamColor||'#4a6a7a')+'">'+r.team+'</span>':'';
     return '<tr><td class="r-medal">'+medal+'</td>'
-      +'<td class="tl">'+r.name+(isTied?'<span class="tie-tag">TIE</span>':'')+'</td>'
+      +'<td class="tl">'+r.name+teamBadge+(isTied?'<span class="tie-tag">TIE</span>':'')+'</td>'
       +'<td class="r-score">'+r.hits+'/25</td>'
       +'<td><span class="r-pct '+pc+'">'+r.pct+'%</span></td>'
       +stnCells+'</tr>';
@@ -956,6 +1224,7 @@ function buildReportHTML(data){
     +'<th style="width:8%">S1</th><th style="width:8%">S2</th><th style="width:8%">S3</th><th style="width:8%">S4</th><th style="width:8%">S5</th>'
     +'</tr></thead><tbody>'+tableRows+'</tbody></table></div>'
     +tieNote
+    +buildTeamSummaryHTML(data)
     +'<div class="rpt-sec">🔫 Shot-by-Shot Breakdown</div>'
     +'<div class="tbl-wrap"><table class="rtbl stbl"><thead><tr>'
     +'<th class="tl" style="width:18%">SHOOTER</th><th style="width:10%">TOTAL</th>'
@@ -966,6 +1235,37 @@ function buildReportHTML(data){
     +'<span style="font-family:\'Share Tech Mono\',monospace;font-size:11px">'+syncLabel+'</span>'
     +'<span>'+data.date+'</span></div>'
     +'</div></div>';
+}
+
+function buildTeamSummaryHTML(data){
+  if(!data.results)return '';
+  const teamMap={};
+  data.results.forEach(function(r){
+    if(!r.team)return;
+    if(!teamMap[r.team])teamMap[r.team]={name:r.team,color:r.teamColor||'#4a6a7a',totalHits:0,members:0,shooters:[]};
+    teamMap[r.team].totalHits+=r.hits;
+    teamMap[r.team].members++;
+    teamMap[r.team].shooters.push(r.name);
+  });
+  const teams=Object.values(teamMap);
+  if(teams.length<1)return '';
+  teams.sort(function(a,b){return (b.totalHits/b.members)-(a.totalHits/a.members);});
+  let rows=teams.map(function(t){
+    const avg=(t.totalHits/t.members).toFixed(1);
+    const pct=Math.round(t.totalHits/(t.members*25)*100);
+    const pc=pct>=80?'g':pct>=60?'o':'p';
+    return '<tr>'
+      +'<td class="tl"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+t.color+';margin-right:6px;vertical-align:middle"></span>'+t.name+'</td>'
+      +'<td>'+t.members+'</td>'
+      +'<td class="r-score">'+t.totalHits+'/'+(t.members*25)+'</td>'
+      +'<td>'+avg+'</td>'
+      +'<td><span class="r-pct '+pc+'">'+pct+'%</span></td>'
+      +'</tr>';
+  }).join('');
+  return '<div class="rpt-sec">👥 Team Summary</div>'
+    +'<div class="tbl-wrap"><table class="rtbl"><thead><tr>'
+    +'<th class="tl" style="width:25%">TEAM</th><th style="width:12%">MEMBERS</th><th style="width:15%">TOTAL</th><th style="width:12%">AVG</th><th style="width:10%">PCT</th>'
+    +'</tr></thead><tbody>'+rows+'</tbody></table></div>';
 }
 
 function buildPodiumHTML(results){

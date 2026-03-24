@@ -152,6 +152,15 @@ header{position:relative;z-index:1;display:flex;align-items:center;justify-conte
 .rec-item:last-child{margin-bottom:0}
 .rec-icon{flex-shrink:0;font-size:13px}
 
+/* Team styles */
+.team-badge{display:inline-block;font-size:9px;padding:1px 6px;border-radius:3px;font-family:'Share Tech Mono',monospace;font-weight:700;margin-left:6px;vertical-align:middle;opacity:0.8}
+.team-lb-wrap{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:16px}
+.team-lb-head{padding:14px 18px;background:rgba(0,0,0,0.2);border-bottom:1px solid var(--border);font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--accent)}
+.team-color-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;display:inline-block;vertical-align:middle;margin-right:6px}
+.filter-team-select{appearance:none;-webkit-appearance:none;background:rgba(0,0,0,0.4);border:1px solid var(--accent);border-radius:6px;padding:10px 40px 10px 14px;color:white;font-family:'Exo 2',sans-serif;font-size:15px;font-weight:600;cursor:pointer;outline:none;min-width:180px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2300e5ff' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;transition:border-color 0.2s,box-shadow 0.2s}
+.filter-team-select:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(0,229,255,0.15)}
+.filter-team-select option{background:#0d1520;color:white;font-weight:600}
+
 @media(max-width:600px){
   .cards-grid{grid-template-columns:1fr}
   header{padding:12px 14px}
@@ -192,15 +201,23 @@ header{position:relative;z-index:1;display:flex;align-items:center;justify-conte
   <!-- Main content (hidden until loaded) -->
   <div id="mainContent" style="display:none">
 
-    <!-- Shooter dropdown -->
+    <!-- Filter bar with team and shooter dropdowns -->
     <div class="filter-bar" id="filterBar" style="display:none">
-      <span class="filter-label">Shooter</span>
+      <span class="filter-label">Team</span>
+      <select class="filter-team-select" id="teamSelect" onchange="selectTeam(this.value)">
+        <option value="ALL">👥 All Teams</option>
+      </select>
+      <span class="filter-label" style="margin-left:10px">Shooter</span>
       <select class="shooter-select" id="shooterSelect" onchange="selectShooter(this.value)"></select>
       <span class="select-meta" id="selectMeta"></span>
     </div>
 
     <!-- Summary strip -->
     <div class="summary-strip" id="summaryStrip"></div>
+
+    <!-- Team Leaderboard -->
+    <div class="divider" id="teamLbDivider" style="display:none">👥 Team Leaderboard</div>
+    <div id="teamLeaderboardWrap"></div>
 
     <!-- Leaderboard -->
     <div class="divider">🏆 All-Time Leaderboard</div>
@@ -219,7 +236,9 @@ const WORKER_URL = 'https://clayai-roster.mario-parisi.workers.dev';
 // Global state
 let allRounds = [];
 let allShooters = {};
+let allTeamStats = {};
 let selectedShooter = 'ALL';
+let selectedTeam = 'ALL';
 
 // ── Boot ───────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', init);
@@ -259,7 +278,10 @@ async function init() {
   }
 
   allShooters = aggregateShooters(allRounds);
+  allTeamStats = aggregateTeams(allRounds);
   selectedShooter = 'ALL';
+  selectedTeam = 'ALL';
+  buildTeamDropdown();
   buildShooterDropdown();
   render();
   show('mainContent');
@@ -521,15 +543,79 @@ function computeStats(s) {
   }
 }
 
-// ── Filter pills ───────────────────────────────────────────
+// ── Team aggregation ─────────────────────────────────────
+function aggregateTeams(rounds) {
+  const map = {};
+  for (const round of rounds) {
+    for (const result of (round.results || [])) {
+      if (!result.team) continue;
+      const key = result.team;
+      if (!map[key]) map[key] = { name: result.team, color: result.teamColor || '#4a6a7a', teamId: result.teamId || '', rounds: [], members: new Set() };
+      map[key].members.add(result.name);
+    }
+  }
+  // Compute per-team stats from member shooter stats
+  for (const key in map) {
+    const team = map[key];
+    const memberNames = Array.from(team.members);
+    let totalScore = 0, totalRounds = 0, bestAvg = 0;
+    const memberStats = [];
+    for (const name of memberNames) {
+      if (allShooters[name]) {
+        const s = allShooters[name];
+        totalScore += s.rounds.reduce((a, r) => a + r.score, 0);
+        totalRounds += s.totalRounds;
+        if (s.weightedAvg > bestAvg) bestAvg = s.weightedAvg;
+        memberStats.push(s);
+      }
+    }
+    team.memberCount = memberNames.length;
+    team.totalRounds = totalRounds;
+    team.avgScore = totalRounds > 0 ? totalScore / totalRounds : 0;
+    team.bestMemberAvg = bestAvg;
+    team.memberNames = memberNames;
+    team.memberStatsList = memberStats;
+
+    // Team weighted avg = average of member weighted avgs
+    const wAvgs = memberStats.map(s => s.weightedAvg);
+    team.weightedAvg = wAvgs.length ? wAvgs.reduce((a, v) => a + v, 0) / wAvgs.length : 0;
+  }
+  return map;
+}
+
+// ── Team filter ──────────────────────────────────────────
+function buildTeamDropdown() {
+  const sel = document.getElementById('teamSelect');
+  const teams = Object.values(allTeamStats).sort((a, b) => b.weightedAvg - a.weightedAvg);
+  let html = '<option value="ALL">👥 All Teams</option>';
+  for (const t of teams) {
+    html += `<option value="${t.name}">${t.name} · ${t.memberCount} members</option>`;
+  }
+  sel.innerHTML = html;
+  sel.value = selectedTeam;
+}
+
+function selectTeam(name) {
+  selectedTeam = name;
+  selectedShooter = 'ALL';
+  buildShooterDropdown();
+  render();
+}
+
 // ── Shooter dropdown ───────────────────────────────────────
 function buildShooterDropdown() {
   const bar = document.getElementById('filterBar');
   const sel = document.getElementById('shooterSelect');
-  const shooters = Object.values(allShooters)
+  let shooters = Object.values(allShooters)
     .sort((a, b) => b.weightedAvg - a.weightedAvg);
 
-  if (!shooters.length) { bar.style.display = 'none'; return; }
+  // Filter by selected team
+  if (selectedTeam !== 'ALL' && allTeamStats[selectedTeam]) {
+    const teamMembers = allTeamStats[selectedTeam].memberNames;
+    shooters = shooters.filter(s => teamMembers.includes(s.name));
+  }
+
+  if (!Object.keys(allShooters).length) { bar.style.display = 'none'; return; }
   bar.style.display = 'flex';
 
   let html = `<option value="ALL">👥 All Shooters</option>`;
@@ -562,8 +648,14 @@ function selectShooter(name) {
 
 // ── Main render ────────────────────────────────────────────
 function render() {
-  const shooters = Object.values(allShooters)
+  let shooters = Object.values(allShooters)
     .sort((a, b) => b.weightedAvg - a.weightedAvg);
+
+  // Filter by team if selected
+  if (selectedTeam !== 'ALL' && allTeamStats[selectedTeam]) {
+    const teamMembers = allTeamStats[selectedTeam].memberNames;
+    shooters = shooters.filter(s => teamMembers.includes(s.name));
+  }
 
   const filtered = selectedShooter === 'ALL'
     ? shooters
@@ -593,6 +685,16 @@ function render() {
   summaryHTML += chip(dateRange, 'Date Range');
   document.getElementById('summaryStrip').innerHTML = summaryHTML;
 
+  // Team Leaderboard
+  const teams = Object.values(allTeamStats).sort((a, b) => b.weightedAvg - a.weightedAvg);
+  if (teams.length > 0) {
+    document.getElementById('teamLbDivider').style.display = 'block';
+    document.getElementById('teamLeaderboardWrap').innerHTML = renderTeamLeaderboard(teams);
+  } else {
+    document.getElementById('teamLbDivider').style.display = 'none';
+    document.getElementById('teamLeaderboardWrap').innerHTML = '';
+  }
+
   // Leaderboard
   document.getElementById('leaderboardWrap').innerHTML = renderLeaderboard(shooters);
 
@@ -613,6 +715,46 @@ function render() {
 
 function chip(val, label) {
   return `<div class="sum-chip"><span class="sv">${val}</span><span class="sl">${label}</span></div>`;
+}
+
+// ── Team Leaderboard ────────────────────────────────────────
+function renderTeamLeaderboard(teams) {
+  const medals = ['🥇','🥈','🥉'];
+  let html = '<div class="team-lb-wrap"><div class="team-lb-head">📈 Teams Ranked by Avg Weighted Score</div>';
+  html += '<table class="lb-table"><thead><tr>';
+  html += '<th></th><th>Team</th><th class="rc">Members</th><th class="rc">Avg Score</th><th class="rc">Wtd Avg</th><th class="rc">Total Rounds</th><th></th>';
+  html += '</tr></thead><tbody>';
+
+  for (let i = 0; i < teams.length; i++) {
+    const t = teams[i];
+    const isDimmed = selectedTeam !== 'ALL' && t.name !== selectedTeam;
+    const barPct = Math.round(t.weightedAvg / 25 * 100);
+    const barColor = barPct >= 80 ? 'var(--hit)' : barPct >= 60 ? 'var(--gold)' : 'var(--miss)';
+
+    html += `<tr class="${isDimmed ? 'dimmed' : ''}" onclick="selectTeam('${t.name.replace(/'/g,"\\'")}');" style="cursor:pointer">
+      <td style="font-size:16px;width:28px">${medals[i] || (i+1)+'.'}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="team-color-dot" style="background:${t.color}"></div>
+          <span class="lb-name">${t.name}</span>
+        </div>
+      </td>
+      <td class="rc">${t.memberCount}</td>
+      <td class="rc">${t.avgScore.toFixed(1)}</td>
+      <td class="rc" style="color:${t.color};font-weight:700">${t.weightedAvg.toFixed(1)}</td>
+      <td class="rc">${t.totalRounds}</td>
+      <td><div class="lb-bar-track"><div class="lb-bar-fill" style="width:${barPct}%;background:${barColor}"></div></div></td>
+    </tr>`;
+  }
+  html += '</tbody></table></div>';
+
+  if (selectedTeam !== 'ALL') {
+    html += `<div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--dim);text-align:right;margin-top:6px">
+      Click a row to filter · <span style="color:var(--accent);cursor:pointer" onclick="selectTeam('ALL')">Show all teams ↺</span>
+    </div>`;
+  }
+
+  return html;
 }
 
 // ── Leaderboard ────────────────────────────────────────────
@@ -637,7 +779,7 @@ function renderLeaderboard(shooters) {
       <td>
         <div style="display:flex;align-items:center;gap:8px">
           <div style="width:26px;height:26px;border-radius:50%;background:${s.color};display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:#000;flex-shrink:0">${s.name.charAt(0)}</div>
-          <span class="lb-name">${s.name}</span>
+          <span class="lb-name">${s.name}${(() => { const t = findShooterTeam(s.name); return t ? '<span class="team-badge" style="background:' + (t.color||'#4a6a7a') + '22;color:' + (t.color||'#4a6a7a') + '">' + t.name + '</span>' : ''; })()}</span>
         </div>
       </td>
       <td class="rc" style="color:${s.color};font-weight:700">${wAvg}</td>
@@ -673,11 +815,15 @@ function renderCard(s) {
 
   let html = `<div class="shooter-card${isExpanded ? ' expanded' : ''}" onclick="this.classList.toggle('expanded');event.stopPropagation()">`;
 
+  // Find shooter's team
+  const shooterTeam = findShooterTeam(s.name);
+  const teamBadgeHTML = shooterTeam ? `<span class="team-badge" style="background:${(shooterTeam.color||'#4a6a7a')}22;color:${shooterTeam.color||'#4a6a7a'}">${shooterTeam.name}</span>` : '';
+
   // Header
   html += `<div class="card-header">
     <div class="card-avatar" style="background:${color}">${s.name.charAt(0)}</div>
     <div>
-      <div class="card-name">${s.name}</div>
+      <div class="card-name">${s.name}${teamBadgeHTML}</div>
       <div class="card-meta">${s.totalRounds} round${s.totalRounds > 1 ? 's' : ''} · ${dateRange}</div>
     </div>
     ${s.totalRounds >= 3 ? `<div class="trend-pill ${trendClass}">${trendLabel}</div>` : ''}
@@ -834,6 +980,14 @@ function trendSVG(rounds, color) {
 }
 
 // ── Utilities ──────────────────────────────────────────────
+function findShooterTeam(name) {
+  for (const key in allTeamStats) {
+    if (allTeamStats[key].memberNames.includes(name)) {
+      return allTeamStats[key];
+    }
+  }
+  return null;
+}
 function avg(a) { return a.length ? a.reduce((s, v) => s + v, 0) / a.length : 0; }
 function stdev(a) {
   if (a.length < 2) return 0;
