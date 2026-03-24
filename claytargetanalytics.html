@@ -226,8 +226,17 @@ window.addEventListener('DOMContentLoaded', init);
 async function init() {
   document.getElementById('refreshBtn').disabled = true;
   show('loadingWrap'); hide('errorWrap'); hide('mainContent');
-  setProgress(0, 'Connecting to GitHub...');
 
+  // Check for ?report=reports/round_xxx.json — load single report from SMS link
+  const params = new URLSearchParams(window.location.search);
+  const singleReport = params.get('report');
+  if (singleReport) {
+    await loadSingleReport(singleReport);
+    document.getElementById('refreshBtn').disabled = false;
+    return;
+  }
+
+  setProgress(0, 'Connecting to GitHub...');
   try {
     allRounds = await loadAllReports();
   } catch(e) {
@@ -250,10 +259,76 @@ async function init() {
 
   allShooters = aggregateShooters(allRounds);
   selectedShooter = 'ALL';
-
   buildShooterDropdown();
   render();
   show('mainContent');
+}
+
+// ── Load a single report from ?report= param (SMS deep link) ──
+async function loadSingleReport(path) {
+  setProgress(10, 'Loading report...');
+  try {
+    const res = await fetch(WORKER_URL + '?path=' + encodeURIComponent(path));
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const json = await res.json();
+    if (!json.content) throw new Error('No content in response');
+    const data = JSON.parse(atob(json.content.replace(/\n/g, '')));
+    data._ts = data.id || 0;
+    setProgress(100, 'Done');
+    hide('loadingWrap');
+
+    // Show a "View all rounds" back link at the top
+    document.getElementById('errorWrap').innerHTML = `
+      <div style="background:rgba(0,229,255,0.06);border:1px solid rgba(0,229,255,0.2);border-radius:8px;padding:12px 18px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <span style="font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--accent)">📲 Viewing shared round · ${data.date || ''}</span>
+        <a href="claytargetanalytics.html" style="font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--accent);text-decoration:none;border:1px solid rgba(0,229,255,0.3);padding:5px 12px;border-radius:4px">← All rounds</a>
+      </div>`;
+    show('errorWrap');
+
+    // Render just this round as a mini report
+    allRounds = [data];
+    allShooters = aggregateShooters([data]);
+    selectedShooter = 'ALL';
+
+    // Hide leaderboard divider for single-round view, show cards only
+    show('mainContent');
+    document.getElementById('filterBar').style.display = 'none';
+    document.getElementById('summaryStrip').innerHTML = buildSingleRoundSummary(data);
+    document.getElementById('leaderboardWrap').innerHTML = renderLeaderboard(Object.values(allShooters).sort((a,b)=>b.weightedAvg-a.weightedAvg));
+
+    const grid = document.getElementById('cardsGrid');
+    grid.innerHTML = Object.values(allShooters)
+      .sort((a,b) => {
+        // Sort by rank in this round
+        const ra = data.results.find(r=>r.name===a.name)?.rank || 99;
+        const rb = data.results.find(r=>r.name===b.name)?.rank || 99;
+        return ra - rb;
+      })
+      .map(s => {
+        // Force expanded for single report view
+        selectedShooter = s.name;
+        return renderCard(s);
+      })
+      .join('');
+
+    selectedShooter = 'ALL';
+    requestAnimationFrame(() => {
+      document.querySelectorAll('.sbar-fill').forEach(el => { el.style.width = el.dataset.pct + '%'; });
+    });
+
+  } catch(e) {
+    showDiagnosticError(Object.assign(e, { type: 'network' }));
+  }
+}
+
+function buildSingleRoundSummary(data) {
+  const medals = ['🥇','🥈','🥉'];
+  const winner = data.results?.[0];
+  let html = chip(data.shooterCount || data.results?.length || '?', 'Shooters');
+  html += chip('25', 'Shots Each');
+  if (winner) html += chip((medals[winner.rank-1]||'') + ' ' + winner.name.split(' ')[0], 'Winner');
+  if (data.date) html += chip(data.date, 'Round Date');
+  return html;
 }
 
 // ── Data loading ───────────────────────────────────────────
@@ -574,7 +649,6 @@ function renderLeaderboard(shooters) {
   }
   html += '</tbody></table></div>';
 
-  // "Showing all" note when filtered
   if (selectedShooter !== 'ALL') {
     html += `<div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--dim);text-align:right;margin-top:6px">
       Click a row to focus · <span style="color:var(--accent);cursor:pointer" onclick="selectShooter('ALL')">Show all ↺</span>
