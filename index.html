@@ -649,7 +649,7 @@ function buildReportURL(data){
     +d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())
     +'_'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds())
     +'_'+(data.id||Date.now())+'.json';
-  return 'https://trapshootingai.github.io/TrapAI/claytargetanalytics.html?report=reports/'+fname;
+  return 'https://trapshootingai.github.io/TrapAI/roundreport.html?report=reports/'+fname;
 }
 
 function showReport(data){
