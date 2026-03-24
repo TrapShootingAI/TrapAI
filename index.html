@@ -1064,7 +1064,7 @@ function loadSavedRounds(){
       const n=setSelections.size;
       html+='<div class="set-action-bar">'
         +'<span style="font-family:\'Share Tech Mono\',monospace;font-size:12px;color:var(--accent);flex:1">'
-        +(n<2?'Select 2 or more rounds':n+' rounds selected')+'</span>'
+        +(n<2?'Select 2 rounds to build a set':n===2?'2 rounds selected — ready!':'')+'</span>'
         +'<button class="start-btn" style="padding:10px 18px;font-size:14px;width:auto;'+(n<2?'opacity:0.35;cursor:default':'')+'" '
         +(n>=2?'onclick="viewSetReport()"':'disabled')+'>'
         +'📊 View Set Report'
@@ -1083,8 +1083,16 @@ function toggleSetMode(){
 }
 
 function toggleSetSelection(idx){
-  if(setSelections.has(idx))setSelections.delete(idx);
-  else setSelections.add(idx);
+  if(setSelections.has(idx)){
+    setSelections.delete(idx);
+  } else {
+    if(setSelections.size>=2){
+      // Swap out the oldest selection for the new one
+      const first=setSelections.values().next().value;
+      setSelections.delete(first);
+    }
+    setSelections.add(idx);
+  }
   loadSavedRounds();
 }
 
