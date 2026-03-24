@@ -24,7 +24,7 @@ header{position:relative;z-index:1;display:flex;align-items:center;justify-conte
 .logo-icon{width:42px;height:42px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 0 20px rgba(0,229,255,0.5);animation:glow 2s ease-in-out infinite}
 @keyframes glow{0%,100%{box-shadow:0 0 20px rgba(0,229,255,0.5)}50%{box-shadow:0 0 35px rgba(0,229,255,0.9)}}
 .logo h1{font-family:'Rajdhani',sans-serif;font-size:24px;font-weight:700;color:white;letter-spacing:2px}
-.logo-sub{font-size:11px;color:var(--accent);letter-spacing:3px;font-family:'Share Tech Mono',monospace}
+.logo-sub{font-size:11px;color:var(--accent);letter-spacing:3px;font-family:'Share Tech Mono',monospace;display:block}
 .header-right{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .hinfo{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--dim)}
 
@@ -165,9 +165,9 @@ header{position:relative;z-index:1;display:flex;align-items:center;justify-conte
 <header>
   <div class="logo">
     <div class="logo-icon">📊</div>
-    <div>
+    <div class="logo-text">
       <h1>CLAY<span style="color:var(--accent)">TARGET</span></h1>
-      <div class="logo-sub">Shooter Analytics</div>
+      <span>Shooter Analytics</span>
     </div>
   </div>
   <div class="header-right">
@@ -191,6 +191,13 @@ header{position:relative;z-index:1;display:flex;align-items:center;justify-conte
 
   <!-- Main content (hidden until loaded) -->
   <div id="mainContent" style="display:none">
+
+    <!-- Team dropdown -->
+    <div class="filter-bar" id="teamFilterBar" style="display:none">
+      <span class="filter-label">Team</span>
+      <select class="shooter-select" id="teamAnalyticsSelect" onchange="selectTeamAnalytics(this.value)" style="min-width:200px"></select>
+      <span class="select-meta" id="teamMeta"></span>
+    </div>
 
     <!-- Shooter dropdown -->
     <div class="filter-bar" id="filterBar" style="display:none">
@@ -220,6 +227,8 @@ const WORKER_URL = 'https://clayai-roster.mario-parisi.workers.dev';
 let allRounds = [];
 let allShooters = {};
 let selectedShooter = 'ALL';
+let allTeams = [];
+let selectedTeamId = 'ALL';
 
 // ── Boot ───────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', init);
@@ -228,7 +237,7 @@ async function init() {
   document.getElementById('refreshBtn').disabled = true;
   show('loadingWrap'); hide('errorWrap'); hide('mainContent');
 
-  // Check for ?report=reports/round_xxx.json — load single report from SMS link
+  // Check for ?report= — load single report from SMS link
   const params = new URLSearchParams(window.location.search);
   const singleReport = params.get('report');
   if (singleReport) {
@@ -237,9 +246,23 @@ async function init() {
     return;
   }
 
-  setProgress(0, 'Connecting to GitHub...');
+  setProgress(0, 'Loading teams...');
   try {
-    allRounds = await loadAllReports();
+    allTeams = await fetchTeams();
+  } catch(e) {
+    allTeams = [];
+  }
+
+  // Pre-select team from URL param or default to first team
+  const teamParam = params.get('team');
+  if (teamParam) selectedTeamId = teamParam;
+  else if (allTeams.length) selectedTeamId = allTeams[0].id;
+
+  buildTeamDropdown();
+
+  setProgress(5, 'Connecting to GitHub...');
+  try {
+    allRounds = await loadAllReports(reportsPathForTeam(selectedTeamId));
   } catch(e) {
     showDiagnosticError(e);
     document.getElementById('refreshBtn').disabled = false;
@@ -254,7 +277,7 @@ async function init() {
   if (!allRounds.length) {
     show('mainContent');
     document.getElementById('cardsGrid').innerHTML =
-      '<div class="empty-box" style="grid-column:1/-1">📂 No reports found in <strong>reports/</strong> yet.<br><br>Complete a round in the scoring app — it will push here automatically.</div>';
+      '<div class="empty-box" style="grid-column:1/-1">📂 No reports found for this team yet.<br><br>Complete a round in the scoring app — it will push here automatically.</div>';
     return;
   }
 
@@ -263,6 +286,66 @@ async function init() {
   buildShooterDropdown();
   render();
   show('mainContent');
+}
+
+// ── Teams ─────────────────────────────────────────────────
+async function fetchTeams() {
+  try {
+    const res = await fetch(WORKER_URL + '?path=teams.json');
+    if (!res.ok) return [];
+    const json = await res.json();
+    if (!json.content) return [];
+    return JSON.parse(atob(json.content.replace(/\n/g, '')));
+  } catch(e) { return []; }
+}
+
+function reportsPathForTeam(teamId) {
+  if (!teamId || teamId === 'ALL') return 'reports';
+  return 'teams/' + teamId + '/reports';
+}
+
+function buildTeamDropdown() {
+  const bar = document.getElementById('teamFilterBar');
+  const sel = document.getElementById('teamAnalyticsSelect');
+  const meta = document.getElementById('teamMeta');
+  if (!allTeams.length) { bar.style.display = 'none'; return; }
+  bar.style.display = 'flex';
+  let html = '';
+  allTeams.forEach(t => {
+    html += '<option value="' + t.id + '"' + (t.id === selectedTeamId ? ' selected' : '') + '>' + t.name + '</option>';
+  });
+  sel.innerHTML = html;
+  meta.textContent = allTeams.find(t => t.id === selectedTeamId)?.members?.length + ' members' || '';
+}
+
+async function selectTeamAnalytics(teamId) {
+  selectedTeamId = teamId;
+  selectedShooter = 'ALL';
+  document.getElementById('teamMeta').textContent = '';
+  show('loadingWrap'); hide('mainContent');
+  setProgress(5, 'Loading team reports...');
+  try {
+    allRounds = await loadAllReports(reportsPathForTeam(teamId));
+  } catch(e) {
+    showDiagnosticError(e);
+    hide('loadingWrap');
+    return;
+  }
+  hide('loadingWrap');
+  if (!allRounds.length) {
+    show('mainContent');
+    document.getElementById('filterBar').style.display = 'none';
+    document.getElementById('summaryStrip').innerHTML = '';
+    document.getElementById('leaderboardWrap').innerHTML = '';
+    document.getElementById('cardsGrid').innerHTML =
+      '<div class="empty-box" style="grid-column:1/-1">📂 No reports for this team yet.</div>';
+    return;
+  }
+  allShooters = aggregateShooters(allRounds);
+  buildShooterDropdown();
+  render();
+  show('mainContent');
+  buildTeamDropdown();
 }
 
 // ── Load a single report from ?report= param (SMS deep link) ──
@@ -333,12 +416,13 @@ function buildSingleRoundSummary(data) {
 }
 
 // ── Data loading ───────────────────────────────────────────
-async function loadAllReports() {
+async function loadAllReports(reportsPath) {
+  reportsPath = reportsPath || 'reports';
   // 1. List directory
   setProgress(5, 'Fetching report list...');
   let dirRes;
   try {
-    dirRes = await fetch(WORKER_URL + '?path=reports', { method: 'GET' });
+    dirRes = await fetch(WORKER_URL + '?path=' + encodeURIComponent(reportsPath), { method: 'GET' });
   } catch(e) {
     throw Object.assign(new Error('Network error — could not reach the worker'), {
       type: 'network', detail: e.message
@@ -577,7 +661,12 @@ function render() {
     ? fmtDate(visibleRounds[0]._ts) + ' – ' + fmtDate(visibleRounds[visibleRounds.length-1]._ts)
     : visibleRounds.length ? fmtDate(visibleRounds[0]._ts) : '—';
 
-  let summaryHTML = chip(visibleRounds.length, 'Rounds');
+  let summaryHTML = '';
+  if (selectedTeamId && selectedTeamId !== 'ALL') {
+    const team = allTeams.find(t => t.id === selectedTeamId);
+    if (team) summaryHTML += chip('<span style="display:inline-flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:50%;background:' + (team.color||'#00e5ff') + ';display:inline-block"></span>' + team.name + '</span>', 'Team');
+  }
+  summaryHTML += chip(visibleRounds.length, 'Rounds');
   if (selectedShooter === 'ALL') {
     summaryHTML += chip(shooters.length, 'Shooters');
     const leader = shooters[0];

@@ -1,0 +1,11 @@
+[
+  {
+    "id": "team_default",
+    "name": "Parisi Family",
+    "color": "#00e5ff",
+    "members": [
+      {"name": "Mateo Parisi", "phone": "7343043647", "email": ""},
+      {"name": "Mario Parisi", "phone": "7347705969", "email": ""}
+    ]
+  }
+]
