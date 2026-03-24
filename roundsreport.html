@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>ClayTarget — Round Scorecard</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;800&display=swap');
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{overflow-x:hidden;min-height:100vh}
+body{background:#f2f4f7;font-family:Georgia,serif;color:#111}
+
+/* ── Top bar ── */
+.rpt-bar{
+  background:#1a1a2e;
+  padding:12px 20px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+  border-bottom:3px solid #00e5ff;
+  position:sticky;
+  top:0;
+  z-index:100;
+}
+.rpt-bar-logo{
+  display:flex;align-items:center;gap:10px;flex:1;min-width:0;
+}
+.rpt-bar-icon{
+  width:34px;height:34px;
+  background:#00e5ff;
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;flex-shrink:0;
+}
+.rpt-bar-title{
+  font-family:'Rajdhani',sans-serif;
+  font-size:15px;font-weight:700;
+  color:white;letter-spacing:1px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.rpt-bar-date{
+  font-family:'Share Tech Mono',monospace;
+  font-size:11px;color:#00e5ff;
+  white-space:nowrap;
+}
+.rpt-bar-btn{
+  padding:9px 16px;
+  border-radius:4px;
+  font-family:'Rajdhani',sans-serif;
+  font-size:14px;font-weight:700;
+  letter-spacing:1px;cursor:pointer;
+  border:none;transition:opacity 0.2s;
+  flex-shrink:0;
+  text-decoration:none;
+  display:inline-flex;align-items:center;gap:6px;
+}
+.rpt-bar-btn:hover{opacity:0.85}
+.btn-send{background:#f59e0b;color:#000}
+.btn-back{background:transparent;color:#00e5ff;border:1px solid rgba(0,229,255,0.4)!important;border-style:solid;}
+.btn-share{background:transparent;color:#00e5ff;border:1px solid rgba(0,229,255,0.4);}
+
+/* ── Loading / error states ── */
+.state-box{
+  max-width:500px;margin:60px auto;padding:40px 24px;
+  text-align:center;
+  background:#fff;border-radius:12px;
+  box-shadow:0 4px 20px rgba(0,0,0,0.08);
+}
+.spinner{
+  width:48px;height:48px;
+  border:3px solid #dde1e8;
+  border-top-color:#1a1a2e;
+  border-radius:50%;
+  animation:spin 0.8s linear infinite;
+  margin:0 auto 20px;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.state-title{
+  font-family:'Rajdhani',sans-serif;
+  font-size:22px;font-weight:700;color:#1a1a2e;margin-bottom:8px;
+}
+.state-sub{
+  font-family:'Share Tech Mono',monospace;
+  font-size:12px;color:#888;line-height:1.7;
+}
+.state-box .retry-btn{
+  margin-top:20px;
+  padding:10px 24px;
+  background:#1a1a2e;color:white;
+  border:none;border-radius:6px;
+  font-family:'Rajdhani',sans-serif;
+  font-size:15px;font-weight:700;
+  cursor:pointer;letter-spacing:1px;
+}
+
+/* ── Report card ── */
+.rpt-card{
+  background:#fff;
+  width:100%;max-width:920px;
+  margin:24px auto;
+  border-radius:10px;
+  box-shadow:0 4px 24px rgba(0,0,0,0.10);
+  overflow:visible;
+}
+.rpt-body{padding:36px 36px 48px}
+.rpt-head{text-align:center;margin-bottom:28px;padding-bottom:18px;border-bottom:3px solid #1a1a2e}
+.rpt-eyebrow{font-size:11px;letter-spacing:5px;text-transform:uppercase;color:#888;margin-bottom:8px;font-family:'Share Tech Mono',monospace}
+.rpt-title{font-family:'Rajdhani',sans-serif;font-size:36px;font-weight:800;color:#1a1a2e;letter-spacing:3px;line-height:1;margin-bottom:8px}
+.rpt-date-line{font-family:'Share Tech Mono',monospace;font-size:13px;color:#777}
+.rpt-meta{display:inline-flex;gap:20px;margin-top:12px;padding:7px 18px;background:#f4f6f8;border-radius:4px;font-family:'Share Tech Mono',monospace;font-size:12px;color:#555;flex-wrap:wrap;justify-content:center}
+.rpt-sec{font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:700;letter-spacing:4px;text-transform:uppercase;color:#1a1a2e;border-left:4px solid #1a1a2e;padding-left:12px;margin:28px 0 14px}
+
+/* ── Podium ── */
+.podium-wrap{display:flex;justify-content:center;align-items:flex-end;gap:16px;padding:24px 20px 0;background:linear-gradient(160deg,#e8ecf3,#d5dae5);border-radius:8px}
+.podium-slot{display:flex;flex-direction:column;align-items:center;gap:4px}
+.podium-names{font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;color:#1a1a2e;text-align:center;line-height:1.3}
+.podium-score{font-family:'Share Tech Mono',monospace;font-size:22px;font-weight:700;margin-top:4px}
+.podium-pct{font-family:'Share Tech Mono',monospace;font-size:11px;color:#777;margin-bottom:4px}
+.podium-tie{font-size:10px;background:#fff3cd;color:#7a5000;border:1px solid #ffc107;border-radius:10px;padding:2px 8px;font-family:'Share Tech Mono',monospace;font-weight:700;letter-spacing:1px;margin-bottom:4px}
+.podium-bar{border-radius:6px 6px 0 0;display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:800;color:white;letter-spacing:1px;min-width:100px}
+
+/* ── Tables ── */
+.tbl-wrap{border-radius:6px;border:1px solid #dde1e8;margin-bottom:8px;width:100%}
+.rtbl{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
+.rtbl thead tr{background:#1a1a2e}
+.rtbl th{color:white;padding:9px 6px;text-align:center;font-family:'Rajdhani',sans-serif;font-size:11px;letter-spacing:1px;text-transform:uppercase;font-weight:600;word-break:break-word}
+.rtbl th.tl{text-align:left;padding-left:12px}
+.rtbl td{padding:9px 6px;text-align:center;border-bottom:1px solid #eef0f3;font-family:'Share Tech Mono',monospace;font-size:12px;background:#fff;word-break:break-word;overflow-wrap:anywhere}
+.rtbl td.tl{text-align:left;font-family:Georgia,serif;font-weight:bold;padding-left:12px;font-size:13px}
+.rtbl tbody tr:nth-child(even) td{background:#f9fafb}
+.rtbl tbody tr:first-child td{background:#fffdf0}
+.rtbl tbody tr:last-child td{border-bottom:none}
+.stbl thead tr{background:#2d3748}
+.r-medal{font-size:16px}
+.r-score{font-size:15px;font-weight:700;color:#1a1a2e}
+.r-pct{display:inline-block;padding:2px 7px;border-radius:12px;font-size:11px;font-weight:700}
+.r-pct.g{background:#d4edda;color:#155724}
+.r-pct.o{background:#fff3cd;color:#856404}
+.r-pct.p{background:#f8d7da;color:#721c24}
+.stn-v{font-size:12px}
+.stn-v.pf{color:#155724;font-weight:700}
+.stn-v.pg{color:#856404}
+.stn-v.pp{color:#721c24}
+.tie-tag{display:inline-block;font-size:9px;background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:3px;padding:1px 5px;font-family:'Share Tech Mono',monospace;vertical-align:middle;margin-left:4px}
+.shot-pip{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:middle;margin:1px}
+.shot-pip.h{background:#28a745}
+.shot-pip.m{background:#dc3545}
+.tie-box{background:#fffbea;border:1px solid #ffc107;border-radius:6px;padding:12px 16px;margin-top:16px;font-size:13px;color:#7a5c00;line-height:1.6}
+.rpt-footer{margin-top:36px;padding-top:14px;border-top:1px solid #e8eaf0;display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#aaa;font-family:'Share Tech Mono',monospace;flex-wrap:wrap;gap:8px}
+
+@media print{
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  .rpt-bar{display:none!important}
+  body{background:#fff!important}
+  .rpt-card{box-shadow:none!important;margin:0!important;border-radius:0!important;max-width:100%!important}
+  .rpt-body{padding:16px 20px 24px!important}
+  .podium-wrap{background:linear-gradient(160deg,#e8ecf3,#d5dae5)!important}
+  .rtbl thead tr{background:#1a1a2e!important}
+  .stbl thead tr{background:#2d3748!important}
+  .rtbl tbody tr:first-child td{background:#fffdf0!important}
+  .rtbl tbody tr:nth-child(even) td{background:#f9fafb!important}
+  .r-pct.g{background:#d4edda!important;color:#155724!important}
+  .r-pct.o{background:#fff3cd!important;color:#856404!important}
+  .r-pct.p{background:#f8d7da!important;color:#721c24!important}
+  .shot-pip.h{background:#28a745!important}
+  .shot-pip.m{background:#dc3545!important}
+  .tie-box{background:#fffbea!important}
+}
+@media(max-width:600px){
+  .rpt-body{padding:18px 14px 32px}
+  .rtbl th,.rtbl td{padding:7px 4px;font-size:10px}
+  .rpt-title{font-size:26px}
+  .podium-bar{min-width:70px}
+}
+</style>
+</head>
+<body>
+
+<!-- Top bar injected by JS after data loads -->
+<div id="barWrap"></div>
+
+<!-- Loading state -->
+<div id="loadingBox" class="state-box">
+  <div class="spinner"></div>
+  <div class="state-title">Loading Scorecard</div>
+  <div class="state-sub" id="loadMsg">Fetching round data...</div>
+</div>
+
+<!-- Error state -->
+<div id="errorBox" class="state-box" style="display:none">
+  <div style="font-size:48px;margin-bottom:16px">⚠️</div>
+  <div class="state-title" style="color:#c0392b">Could Not Load Scorecard</div>
+  <div class="state-sub" id="errorMsg"></div>
+  <button class="retry-btn" onclick="location.reload()">↺ Try Again</button>
+</div>
+
+<!-- Report rendered here -->
+<div id="reportWrap" style="display:none;padding:0 8px 40px"></div>
+
+<script>
+const WORKER_URL = 'https://clayai-roster.mario-parisi.workers.dev';
+
+// ── Boot ───────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async function() {
+  const params = new URLSearchParams(window.location.search);
+  const reportPath = params.get('report');
+
+  if (!reportPath) {
+    showError(
+      'No report specified.',
+      'This link is missing a <code>?report=</code> parameter.<br>Open a report from the ClayTarget scoring app.'
+    );
+    return;
+  }
+
+  setLoadMsg('Fetching ' + reportPath.split('/').pop() + '...');
+
+  let data;
+  try {
+    const res = await fetch(WORKER_URL + '?path=' + encodeURIComponent(reportPath));
+    if (!res.ok) throw new Error('HTTP ' + res.status + ' — file may not exist yet');
+    const json = await res.json();
+    if (!json.content) throw new Error('Empty response from server');
+    data = JSON.parse(atob(json.content.replace(/\n/g, '')));
+  } catch(e) {
+    showError('Failed to load report', e.message + '<br><br>Make sure the round has finished syncing to GitHub (may take a few seconds after the round ends).');
+    return;
+  }
+
+  document.title = 'Scorecard — ' + (data.date || 'Trap Round');
+  renderReport(data);
+});
+
+// ── Render ─────────────────────────────────────────────────
+function renderReport(data) {
+  // Build top bar
+  document.getElementById('barWrap').innerHTML = buildBar(data);
+
+  // Build report card
+  document.getElementById('reportWrap').innerHTML = buildReportHTML(data);
+
+  // Show
+  document.getElementById('loadingBox').style.display = 'none';
+  document.getElementById('reportWrap').style.display = 'block';
+}
+
+function buildBar(data) {
+  const shooterNames = (data.results || []).map(r => r.name).join(', ');
+  const winner = (data.results || []).find(r => r.rank === 1);
+  const winnerStr = winner ? '🥇 ' + winner.name + ' ' + winner.hits + '/25' : '';
+
+  return `<div class="rpt-bar">
+    <div class="rpt-bar-logo">
+      <div class="rpt-bar-icon">🎯</div>
+      <div>
+        <div class="rpt-bar-title">CLAY<span style="color:#00e5ff">TARGET</span> · ${winnerStr}</div>
+        <div class="rpt-bar-date">${data.date || ''}</div>
+      </div>
+    </div>
+    <button class="rpt-bar-btn btn-share" id="shareBtn" onclick="copyLink()">🔗 Copy Link</button>
+    <a class="rpt-bar-btn btn-back" href="index.html">← Scoring App</a>
+  </div>`;
+}
+
+function copyLink() {
+  const url = window.location.href;
+  const btn = document.getElementById('shareBtn');
+  if (navigator.share) {
+    navigator.share({ title: document.title, url }).catch(function(){});
+  } else {
+    navigator.clipboard.writeText(url).then(function() {
+      btn.textContent = '✓ Copied!';
+      setTimeout(function() { btn.textContent = '🔗 Copy Link'; }, 2000);
+    }).catch(function() {
+      window.prompt('Copy this link:', url);
+    });
+  }
+}
+
+// ── Report HTML — identical to scoring app ─────────────────
+function buildReportHTML(data) {
+  const podium = buildPodiumHTML(data.results);
+
+  const tableRows = data.results.map(r => {
+    const medal = r.rank===1?'🥇':r.rank===2?'🥈':r.rank===3?'🥉':r.rank+'.';
+    const pc = r.pct>=80?'g':r.pct>=60?'o':'p';
+    const isTied = r.tiedWith && r.tiedWith.length > 0;
+    const stnCells = [1,2,3,4,5].map(s => {
+      const shots = (r.stationScores && r.stationScores[s]) || [];
+      if (!shots.length) return '<td class="stn-v">—</td>';
+      const h = shots.filter(Boolean).length;
+      return '<td class="stn-v ' + (h===5?'pf':h>=3?'pg':'pp') + '">' + h + '/5</td>';
+    }).join('');
+    return '<tr><td class="r-medal">' + medal + '</td>'
+      + '<td class="tl">' + r.name + (isTied ? '<span class="tie-tag">TIE</span>' : '') + '</td>'
+      + '<td class="r-score">' + r.hits + '/25</td>'
+      + '<td><span class="r-pct ' + pc + '">' + r.pct + '%</span></td>'
+      + stnCells + '</tr>';
+  }).join('');
+
+  const shotRows = data.results.map(r => {
+    const cells = [1,2,3,4,5].map(s => {
+      const shots = (r.stationScores && r.stationScores[s]) || [];
+      if (!shots.length) return '<td>—</td>';
+      const pips = shots.map(h => '<span class="shot-pip ' + (h?'h':'m') + '"></span>').join('');
+      const h = shots.filter(Boolean).length;
+      return '<td style="white-space:normal">' + pips + '<br><small style="color:#666;font-family:\'Share Tech Mono\',monospace">' + h + '/5</small></td>';
+    }).join('');
+    return '<tr><td class="tl">' + r.rank + '. ' + r.name + '</td><td><strong>' + r.hits + '/25</strong></td>' + cells + '</tr>';
+  }).join('');
+
+  const tieNote = data.hasTie
+    ? '<div class="tie-box">⚠️ <strong>Note:</strong> This round ended in a tie. Tied shooters share the same rank and medal.</div>'
+    : '';
+
+  return '<div class="rpt-card"><div class="rpt-body">'
+    + '<div class="rpt-head">'
+    + '<div class="rpt-eyebrow">Official Trap Shooting Scorecard</div>'
+    + '<div class="rpt-title">🎯 ROUND RESULTS</div>'
+    + '<div class="rpt-date-line">' + data.date + '</div>'
+    + '<div class="rpt-meta">'
+    +   '<span>👥 ' + data.shooterCount + ' Shooters</span>'
+    +   '<span>🎯 25 Shots Each</span>'
+    +   '<span>🏟️ 5 Stations</span>'
+    +   (data.hasTie ? '<span>🤝 Tie Recorded</span>' : '')
+    + '</div></div>'
+    + '<div class="rpt-sec">🏆 Podium</div>' + podium
+    + '<div class="rpt-sec">📊 Final Standings</div>'
+    + '<div class="tbl-wrap"><table class="rtbl"><thead><tr>'
+    + '<th style="width:5%"></th><th class="tl" style="width:20%">SHOOTER</th>'
+    + '<th style="width:10%">TOTAL</th><th style="width:8%">PCT</th>'
+    + '<th style="width:8%">S1</th><th style="width:8%">S2</th><th style="width:8%">S3</th><th style="width:8%">S4</th><th style="width:8%">S5</th>'
+    + '</tr></thead><tbody>' + tableRows + '</tbody></table></div>'
+    + tieNote
+    + '<div class="rpt-sec">🔫 Shot-by-Shot Breakdown</div>'
+    + '<div class="tbl-wrap"><table class="rtbl stbl"><thead><tr>'
+    + '<th class="tl" style="width:18%">SHOOTER</th><th style="width:10%">TOTAL</th>'
+    + '<th style="width:14%">STATION 1</th><th style="width:14%">STATION 2</th>'
+    + '<th style="width:14%">STATION 3</th><th style="width:14%">STATION 4</th><th style="width:14%">STATION 5</th>'
+    + '</tr></thead><tbody>' + shotRows + '</tbody></table></div>'
+    + '<div class="rpt-footer">'
+    + '<span>🎯 ClayTarget Trap Scoring</span>'
+    + '<span>' + data.shooterCount + ' shooters · 5 stations · 25 shots</span>'
+    + '<span>' + data.date + '</span>'
+    + '</div></div></div>';
+}
+
+function buildPodiumHTML(results) {
+  if (!results || !results.length) return '';
+  const byRank = {};
+  results.forEach(r => { if (!byRank[r.rank]) byRank[r.rank] = []; byRank[r.rank].push(r); });
+  const cfg = {
+    1: { medal:'🥇', color:'#d4af37', height:160, label:'1st Place' },
+    2: { medal:'🥈', color:'#9e9e9e', height:115, label:'2nd Place' },
+    3: { medal:'🥉', color:'#cd7f32', height:80,  label:'3rd Place' }
+  };
+  const slots = [2,1,3].map(rank => {
+    const group = byRank[rank];
+    if (!group || !group.length) return '';
+    const c = cfg[rank];
+    const isTied = group.length > 1;
+    const score = group[0].hits;
+    const pct = group[0].pct;
+    const scoreColor = pct>=80 ? '#155724' : pct>=60 ? '#7a5000' : '#721c24';
+    const nameRows = group.map(r => '<div>' + c.medal + ' ' + r.name + '</div>').join('');
+    return '<div class="podium-slot">'
+      + '<div class="podium-names">' + nameRows + '</div>'
+      + '<div class="podium-score" style="color:' + scoreColor + '">' + score + '/25</div>'
+      + '<div class="podium-pct">' + pct + '%</div>'
+      + (isTied
+        ? '<div class="podium-tie">🤝 TIE — SAME PLACE</div>'
+        : '<div style="height:22px"></div>')
+      + '<div class="podium-bar" style="height:' + c.height + 'px;background:' + c.color + ';width:' + (isTied ? group.length * 100 : 100) + 'px">' + c.label + '</div>'
+      + '</div>';
+  }).join('');
+  return '<div class="podium-wrap">' + slots + '</div>';
+}
+
+// ── Helpers ────────────────────────────────────────────────
+function setLoadMsg(msg) {
+  document.getElementById('loadMsg').textContent = msg;
+}
+
+function showError(title, detail) {
+  document.getElementById('loadingBox').style.display = 'none';
+  document.getElementById('errorBox').style.display = 'block';
+  document.querySelector('#errorBox .state-title').textContent = title;
+  document.getElementById('errorMsg').innerHTML = detail;
+}
+</script>
+</body>
+</html>
