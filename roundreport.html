@@ -14,52 +14,55 @@ body{background:#f2f4f7;font-family:Georgia,serif;color:#111}
 /* ── Top bar ── */
 .rpt-bar{
   background:#1a1a2e;
-  padding:12px 20px;
+  padding:10px 16px;
   display:flex;
-  align-items:center;
-  gap:10px;
-  flex-wrap:wrap;
+  flex-direction:column;
+  gap:8px;
   border-bottom:3px solid #00e5ff;
   position:sticky;
   top:0;
   z-index:100;
 }
-.rpt-bar-logo{
-  display:flex;align-items:center;gap:10px;flex:1;min-width:0;
+.rpt-bar-top{
+  display:flex;align-items:center;gap:10px;
 }
 .rpt-bar-icon{
-  width:34px;height:34px;
+  width:32px;height:32px;
   background:#00e5ff;
   border-radius:50%;
   display:flex;align-items:center;justify-content:center;
-  font-size:16px;flex-shrink:0;
+  font-size:15px;flex-shrink:0;
 }
 .rpt-bar-title{
   font-family:'Rajdhani',sans-serif;
   font-size:15px;font-weight:700;
   color:white;letter-spacing:1px;
+  flex:1;min-width:0;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 .rpt-bar-date{
   font-family:'Share Tech Mono',monospace;
   font-size:11px;color:#00e5ff;
-  white-space:nowrap;
+  padding-left:42px;
+}
+.rpt-bar-btns{
+  display:flex;gap:8px;
 }
 .rpt-bar-btn{
-  padding:9px 16px;
+  padding:8px 14px;
   border-radius:4px;
   font-family:'Rajdhani',sans-serif;
-  font-size:14px;font-weight:700;
+  font-size:13px;font-weight:700;
   letter-spacing:1px;cursor:pointer;
   border:none;transition:opacity 0.2s;
   flex-shrink:0;
   text-decoration:none;
-  display:inline-flex;align-items:center;gap:6px;
+  display:inline-flex;align-items:center;gap:5px;
+  white-space:nowrap;
 }
 .rpt-bar-btn:hover{opacity:0.85}
-.btn-send{background:#f59e0b;color:#000}
-.btn-back{background:transparent;color:#00e5ff;border:1px solid rgba(0,229,255,0.4)!important;border-style:solid;}
-.btn-share{background:transparent;color:#00e5ff;border:1px solid rgba(0,229,255,0.4);}
+.btn-back{background:transparent;color:#00e5ff;border:1px solid rgba(0,229,255,0.4);border-radius:4px;}
+.btn-share{background:transparent;color:#00e5ff;border:1px solid rgba(0,229,255,0.4);border-radius:4px;}
 
 /* ── Loading / error states ── */
 .state-box{
@@ -247,20 +250,19 @@ function renderReport(data) {
 }
 
 function buildBar(data) {
-  const shooterNames = (data.results || []).map(r => r.name).join(', ');
   const winner = (data.results || []).find(r => r.rank === 1);
-  const winnerStr = winner ? '🥇 ' + winner.name + ' ' + winner.hits + '/25' : '';
+  const winnerStr = winner ? '🥇 ' + winner.name + ' — ' + winner.hits + '/25' : 'Round Results';
 
   return `<div class="rpt-bar">
-    <div class="rpt-bar-logo">
+    <div class="rpt-bar-top">
       <div class="rpt-bar-icon">🎯</div>
-      <div>
-        <div class="rpt-bar-title">CLAY<span style="color:#00e5ff">TARGET</span> · ${winnerStr}</div>
-        <div class="rpt-bar-date">${data.date || ''}</div>
-      </div>
+      <div class="rpt-bar-title">CLAY<span style="color:#00e5ff">TARGET</span> &nbsp;·&nbsp; ${winnerStr}</div>
     </div>
-    <button class="rpt-bar-btn btn-share" id="shareBtn" onclick="copyLink()">🔗 Copy Link</button>
-    <a class="rpt-bar-btn btn-back" href="index.html">← Scoring App</a>
+    <div class="rpt-bar-date">${data.date || ''}</div>
+    <div class="rpt-bar-btns">
+      <button class="rpt-bar-btn btn-share" id="shareBtn" onclick="copyLink()">🔗 Copy Link</button>
+      <a class="rpt-bar-btn btn-back" href="index.html">← Scoring App</a>
+    </div>
   </div>`;
 }
 
