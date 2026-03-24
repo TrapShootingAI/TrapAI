@@ -588,7 +588,9 @@ function renderCard(s) {
     : fmtDate(s.rounds[0].ts);
   const avgColor = s.avg >= 20 ? 'var(--hit)' : s.avg >= 15 ? 'var(--gold)' : 'var(--miss)';
 
-  let html = `<div class="shooter-card" onclick="this.classList.toggle('expanded');event.stopPropagation()">`;
+  const isExpanded = selectedShooter === 'ALL' || selectedShooter === s.name;
+
+  let html = `<div class="shooter-card${isExpanded ? ' expanded' : ''}" onclick="this.classList.toggle('expanded');event.stopPropagation()">`;
 
   // Header
   html += `<div class="card-header">
