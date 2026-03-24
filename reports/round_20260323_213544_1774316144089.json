@@ -1,0 +1,100 @@
+{
+  "id": 1774316144089,
+  "date": "3/23/2026, 9:35:44 PM",
+  "results": [
+    {
+      "rank": 1,
+      "name": "Mateo Parisi",
+      "color": "#00e5ff",
+      "hits": 24,
+      "pct": 96,
+      "stationScores": {
+        "1": [
+          true,
+          true,
+          false,
+          true,
+          true
+        ],
+        "2": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "3": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "4": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "5": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ]
+      },
+      "tiedWith": [],
+      "phone": "7343043647"
+    },
+    {
+      "rank": 2,
+      "name": "Mario Parisi",
+      "color": "#ff6b35",
+      "hits": 18,
+      "pct": 72,
+      "stationScores": {
+        "1": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "2": [
+          false,
+          false,
+          true,
+          true,
+          true
+        ],
+        "3": [
+          false,
+          true,
+          false,
+          true,
+          false
+        ],
+        "4": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "5": [
+          false,
+          false,
+          true,
+          true,
+          true
+        ]
+      },
+      "tiedWith": [],
+      "phone": "7347705969"
+    }
+  ],
+  "hasTie": false,
+  "shooterCount": 2
+}
