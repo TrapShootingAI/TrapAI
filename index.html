@@ -333,7 +333,6 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
 <div id="reportScreen"></div>
 
 <script>
-<script>
 const COLORS=['#00e5ff','#ff6b35','#a855f7','#22c55e','#f59e0b'];
 const SPS=5,STNS=5;
 let shooters=[],scores={};
@@ -344,32 +343,25 @@ let rotation=1,roundShot=1,shooterTurnIdx=0;
 let waitRotate=false,roundDone=false,shootLog=[];
 let activeOrder=[],roundStartTime=null,roundResults=null;
 
-// ── Active team ───────────────────────────────────────────
-let activeTeam=null; // {id, name, color, members:[]}
-
 // ── Cloudflare Worker ─────────────────────────────────────
 const WORKER_URL='https://clayai-roster.mario-parisi.workers.dev';
 
-// ── Team path helpers ─────────────────────────────────────
-function teamReportsPath(){return activeTeam?'teams/'+activeTeam.id+'/reports':'reports';}
-function teamRoundFilename(id){
-  const d=new Date(id||Date.now());
-  const p=n=>String(n).padStart(2,'0');
-  return 'round_'+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())
-    +'_'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds())+'_'+(id||Date.now())+'.json';
-}
-function roundsKey(){return 'clayai_rounds'+(activeTeam?'_'+activeTeam.id:'');}
-function loadActiveTeamId(){return localStorage.getItem('clayai_active_team')||'';}
-function saveActiveTeamId(id){localStorage.setItem('clayai_active_team',id||'');}
-
 // ── GitHub Report Push ────────────────────────────────────
+// Sends each finished round as reports/round_YYYYMMDD_HHMMSS_<id>.json
+// The worker must support ?path=reports/xxx.json on PUT requests.
+// See the update instructions in the HTML comment at the bottom.
 async function saveReportToGitHub(data){
   try{
-    const fname=teamRoundFilename(data.id);
-    const path=teamReportsPath()+'/'+fname;
+    const d=new Date(data.id||Date.now());
+    const p=n=>String(n).padStart(2,'0');
+    const fname='round_'
+      +d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())
+      +'_'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds())
+      +'_'+(data.id||Date.now())+'.json';
     const content=btoa(unescape(encodeURIComponent(JSON.stringify(data,null,2))));
-    const res=await fetch(WORKER_URL+'?path='+path,{
-      method:'PUT',headers:{'Content-Type':'application/json'},
+    const res=await fetch(WORKER_URL+'?path=reports/'+fname,{
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
       body:JSON.stringify({message:'Add round report '+fname,content})
     });
     if(!res.ok){const e=await res.json().catch(()=>({}));console.warn('Report sync failed:',e.message||res.status);return false;}
@@ -377,48 +369,36 @@ async function saveReportToGitHub(data){
   }catch(e){console.warn('Report sync error:',e.message);return false;}
 }
 
-// ── Teams sync ────────────────────────────────────────────
-async function ghFetchTeams(){
+// ── Roster sync ───────────────────────────────────────────
+async function ghFetchRoster(){
   try{
-    const res=await fetch(WORKER_URL+'?path=teams.json',{method:'GET'});
+    const res=await fetch(WORKER_URL,{method:'GET'});
     if(!res.ok)throw new Error('fetch failed');
     const json=await res.json();
     const decoded=JSON.parse(atob(json.content.replace(/\n/g,'')));
-    localStorage.setItem('clayai_teams',JSON.stringify(decoded));
-    localStorage.setItem('clayai_teams_sha',json.sha);
+    localStorage.setItem('clayai_roster',JSON.stringify(decoded));
+    localStorage.setItem('clayai_roster_sha',json.sha);
     return decoded;
   }catch(e){
-    try{return JSON.parse(localStorage.getItem('clayai_teams')||'[]');}catch(e2){return [];}
+    try{return JSON.parse(localStorage.getItem('clayai_roster')||'[]');}catch(e2){return [];}
   }
 }
-async function ghSaveTeams(teams){
-  const sha=localStorage.getItem('clayai_teams_sha')||'';
-  const content=btoa(unescape(encodeURIComponent(JSON.stringify(teams,null,2))));
-  const body={message:'Update teams',content};
+
+async function ghSaveRoster(roster){
+  const sha=localStorage.getItem('clayai_roster_sha')||'';
+  const content=btoa(unescape(encodeURIComponent(JSON.stringify(roster,null,2))));
+  const body={message:'Update roster',content};
   if(sha)body.sha=sha;
   try{
-    const res=await fetch(WORKER_URL+'?path=teams.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const res=await fetch(WORKER_URL,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     if(!res.ok){const e=await res.json();throw new Error(e.message||'save failed');}
     const json=await res.json();
-    localStorage.setItem('clayai_teams_sha',json.content.sha);
-    localStorage.setItem('clayai_teams',JSON.stringify(teams));
+    localStorage.setItem('clayai_roster_sha',json.content.sha);
+    localStorage.setItem('clayai_roster',JSON.stringify(roster));
   }catch(e){
-    localStorage.setItem('clayai_teams',JSON.stringify(teams));
+    localStorage.setItem('clayai_roster',JSON.stringify(roster));
     alert('Saved locally but could not sync: '+e.message);
   }
-}
-function loadTeams(){try{return JSON.parse(localStorage.getItem('clayai_teams')||'[]');}catch(e){return [];}}
-
-// ── Roster helpers (scoped to active team) ────────────────
-function loadRoster(){return activeTeam?(activeTeam.members||[]):[]}
-async function ghSaveRoster(members){
-  const teams=loadTeams();
-  const idx=teams.findIndex(t=>t.id===activeTeam.id);
-  if(idx<0)return;
-  teams[idx].members=members;
-  activeTeam.members=members;
-  localStorage.setItem('clayai_teams',JSON.stringify(teams));
-  await ghSaveTeams(teams);
 }
 
 // ── Roster UI ─────────────────────────────────────────────
@@ -428,6 +408,9 @@ function toggleRoster(){
   const visible=rl.style.display!=='none';
   rl.style.display=visible?'none':'block';
   btn.textContent=visible?'👤 Manage Team':'👤 Hide Team';
+}
+function loadRoster(){
+  try{return JSON.parse(localStorage.getItem('clayai_roster')||'[]');}catch(e){return [];}
 }
 function openAddMember(){
   document.getElementById('mName').value='';
@@ -448,13 +431,12 @@ function openEditMember(idx){
 }
 function closeModal(){document.getElementById('memberModal').style.display='none';}
 async function saveMember(){
-  if(!activeTeam){alert('Select a team first.');return;}
   const name=document.getElementById('mName').value.trim();
   if(!name){alert('Name is required.');return;}
   const phone=document.getElementById('mPhone').value.trim();
   const email=document.getElementById('mEmail').value.trim();
   const idx=parseInt(document.getElementById('mEditIdx').value);
-  const roster=loadRoster().slice();
+  const roster=loadRoster();
   if(idx>=0)roster[idx]={name,phone,email};
   else roster.push({name,phone,email});
   closeModal();showSyncing(true);
@@ -462,7 +444,7 @@ async function saveMember(){
   showSyncing(false);buildSetup();
 }
 async function deleteMember(idx){
-  const roster=loadRoster().slice();const member=roster[idx];
+  const roster=loadRoster();const member=roster[idx];
   if(!member){alert('Member not found.');return;}
   if(!confirm('Delete '+member.name+'?'))return;
   roster.splice(idx,1);showSyncing(true);
@@ -479,187 +461,73 @@ function toggleSavedDrawer(){
   btn.classList.toggle('open',open);
 }
 
-// ── Team selector UI ──────────────────────────────────────
-function renderTeamSelector(teams){
-  let el=document.getElementById('teamSelectorBar');
-  if(!el){
-    el=document.createElement('div');
-    el.id='teamSelectorBar';
-    el.style.cssText='display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;';
-    const panel=document.querySelector('#setupScreen .panel');
-    panel.insertBefore(el,panel.firstChild);
-  }
-  const teamColor=activeTeam?activeTeam.color||'var(--accent)':'var(--dim)';
-  let html='<span style="font-family:\'Share Tech Mono\',monospace;font-size:11px;color:var(--dim);letter-spacing:2px;flex-shrink:0">TEAM</span>';
-  html+='<select id="teamSelect" onchange="switchTeam(this.value)" style="flex:1;appearance:none;-webkit-appearance:none;background:rgba(0,0,0,0.4);border:1px solid '+teamColor+';border-radius:6px;padding:9px 36px 9px 12px;color:white;font-family:\'Exo 2\',sans-serif;font-size:14px;font-weight:600;cursor:pointer;outline:none;min-width:160px">';
-  if(!teams.length)html+='<option value="">— No teams yet —</option>';
-  teams.forEach(t=>{
-    html+='<option value="'+t.id+'"'+(activeTeam&&t.id===activeTeam.id?' selected':'')+'>'+t.name+'</option>';
-  });
-  html+='</select>';
-  html+='<button class="btn" onclick="openTeamModal()" style="padding:6px 12px;font-size:12px;flex-shrink:0">⚙ Teams</button>';
-  el.innerHTML=html;
-}
-
-async function switchTeam(id){
-  const teams=loadTeams();
-  activeTeam=teams.find(t=>t.id===id)||null;
-  saveActiveTeamId(id);
-  setMode=false;setSelections.clear();
-  await buildSetup();
-}
-
-// ── Team modal ────────────────────────────────────────────
-const TEAM_COLORS=['#00e5ff','#ff6b35','#a855f7','#22c55e','#f59e0b','#e11d48','#0ea5e9','#84cc16'];
-let _pendingTeamColor='#00e5ff';
-
-function openTeamModal(){
-  let modal=document.getElementById('teamModal');
-  if(!modal){
-    modal=document.createElement('div');
-    modal.id='teamModal';
-    modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:600;display:flex;align-items:center;justify-content:center';
-    document.body.appendChild(modal);
-  }
-  renderTeamModalContent(modal);
-  modal.style.display='flex';
-}
-function closeTeamModal(){const m=document.getElementById('teamModal');if(m)m.style.display='none';}
-
-function renderTeamModalContent(modal){
-  const teams=loadTeams();
-  const swatches=TEAM_COLORS.map((c,i)=>'<div onclick="pickTeamColor(\''+c+'\')" id="tsw'+i+'" style="width:24px;height:24px;border-radius:50%;background:'+c+';cursor:pointer;border:2px solid '+(c===_pendingTeamColor?'white':'transparent')+';flex-shrink:0"></div>').join('');
-  const teamList=teams.map((t,i)=>'<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(0,0,0,0.2);border:1px solid '+(activeTeam&&t.id===activeTeam.id?t.color||'var(--accent)':'var(--border)')+';border-radius:5px;margin-bottom:6px">'
-    +'<div style="width:26px;height:26px;border-radius:50%;background:'+(t.color||'#00e5ff')+';display:flex;align-items:center;justify-content:center;font-family:\'Rajdhani\',sans-serif;font-size:13px;font-weight:700;color:#000;flex-shrink:0">'+t.name.charAt(0)+'</div>'
-    +'<span style="flex:1;font-size:14px;font-weight:600;color:white">'+t.name+'</span>'
-    +'<span style="font-family:\'Share Tech Mono\',monospace;font-size:11px;color:var(--dim)">'+(t.members?t.members.length:0)+' members</span>'
-    +(activeTeam&&t.id===activeTeam.id?'<span style="font-family:\'Share Tech Mono\',monospace;font-size:10px;color:var(--accent)">✓ ACTIVE</span>'
-      :'<button class="btn" onclick="selectTeamFromModal(\''+t.id+'\')" style="padding:4px 10px;font-size:11px">Select</button>')
-    +'<button class="btn d" onclick="deleteTeam(\''+t.id+'\')" style="padding:4px 10px;font-size:11px">✕</button>'
-    +'</div>'
-  ).join('');
-  modal.innerHTML='<div style="background:#0d1520;border:1px solid var(--border);border-radius:10px;padding:24px;width:90%;max-width:400px;max-height:90vh;overflow-y:auto">'
-    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'
-    +'<div class="ptitle" style="margin-bottom:0">⚙ Manage Teams</div>'
-    +'<button class="btn" onclick="closeTeamModal()" style="padding:4px 10px;font-size:12px">✕</button>'
-    +'</div>'
-    +(teamList||'<div style="text-align:center;color:var(--dim);font-size:13px;padding:14px;font-family:\'Share Tech Mono\',monospace">No teams yet</div>')
-    +'<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">'
-    +'<div style="font-family:\'Rajdhani\',sans-serif;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:10px">＋ New Team</div>'
-    +'<input type="text" id="newTeamName" class="ninput" placeholder="Team name *" style="margin-bottom:10px">'
-    +'<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">'+swatches+'</div>'
-    +'<button class="start-btn" onclick="createTeam()" style="padding:12px;font-size:15px">Create Team</button>'
-    +'</div>'
-    +'</div>';
-}
-
-function pickTeamColor(c){
-  _pendingTeamColor=c;
-  TEAM_COLORS.forEach((tc,i)=>{
-    const el=document.getElementById('tsw'+i);
-    if(el)el.style.borderColor=tc===c?'white':'transparent';
-  });
-}
-
-async function createTeam(){
-  const name=document.getElementById('newTeamName').value.trim();
-  if(!name){alert('Team name is required.');return;}
-  const teams=loadTeams();
-  const id='team_'+Date.now();
-  const team={id,name,color:_pendingTeamColor||'#00e5ff',members:[]};
-  teams.push(team);
-  showSyncing(true);
-  await ghSaveTeams(teams);
-  showSyncing(false);
-  activeTeam=team;
-  saveActiveTeamId(id);
-  closeTeamModal();
-  await buildSetup();
-}
-
-async function deleteTeam(id){
-  const teams=loadTeams();
-  const t=teams.find(x=>x.id===id);
-  if(!t||!confirm('Delete team "'+t.name+'"?\n\nThis removes the team and its members but does NOT delete reports on GitHub.'))return;
-  const idx=teams.findIndex(x=>x.id===id);
-  teams.splice(idx,1);
-  showSyncing(true);
-  await ghSaveTeams(teams);
-  showSyncing(false);
-  if(activeTeam&&activeTeam.id===id){activeTeam=teams[0]||null;saveActiveTeamId(activeTeam?activeTeam.id:'');}
-  closeTeamModal();
-  await buildSetup();
-}
-
-async function selectTeamFromModal(id){
-  closeTeamModal();
-  await switchTeam(id);
-}
-
+// ── Setup ─────────────────────────────────────────────────
 // ── Sync today's rounds from GitHub ──────────────────────
+// On every session load, fetch the reports/ directory and pull down
+// any files from today that aren't already in localStorage.
 async function syncTodaysRoundsFromGitHub(){
   try{
     const now=new Date();
     const pad=n=>String(n).padStart(2,'0');
     const todayPrefix='round_'+now.getFullYear()+pad(now.getMonth()+1)+pad(now.getDate());
-    const reportsPath=teamReportsPath();
-    const dirRes=await fetch(WORKER_URL+'?path='+encodeURIComponent(reportsPath));
-    if(!dirRes.ok)return;
+
+    // List the reports directory
+    const dirRes=await fetch(WORKER_URL+'?path=reports');
+    if(!dirRes.ok)return; // silently skip if folder doesn't exist yet
     const dirData=await dirRes.json();
     if(!Array.isArray(dirData))return;
+
+    // Filter to today's files only
     const todayFiles=dirData.filter(f=>f.type==='file'&&f.name.startsWith(todayPrefix)&&f.name.endsWith('.json'));
     if(!todayFiles.length)return;
-    const key=roundsKey();
+
+    // Load existing local rounds to check which IDs we already have
     let saved=[];
-    try{saved=JSON.parse(localStorage.getItem(key)||'[]');}catch(e){}
+    try{saved=JSON.parse(localStorage.getItem('clayai_rounds')||'[]');}catch(e){}
     const existingIds=new Set(saved.map(r=>String(r.id)));
+
     let added=0;
     for(const file of todayFiles){
       try{
+        // Extract id from filename: round_YYYYMMDD_HHMMSS_<id>.json
         const idMatch=file.name.match(/_(\d+)\.json$/);
-        if(idMatch&&existingIds.has(idMatch[1]))continue;
+        if(idMatch&&existingIds.has(idMatch[1]))continue; // already have it
+
         const res=await fetch(WORKER_URL+'?path='+encodeURIComponent(file.path));
         if(!res.ok)continue;
         const json=await res.json();
         if(!json.content)continue;
         const data=JSON.parse(atob(json.content.replace(/\n/g,'')));
         data.ghSynced=true;
+
+        // Avoid duplicates by id
         if(data.id&&existingIds.has(String(data.id)))continue;
+
         saved.unshift(data);
         if(data.id)existingIds.add(String(data.id));
         added++;
       }catch(e){console.warn('Could not load',file.name,e.message);}
     }
+
     if(added>0){
       if(saved.length>20)saved.splice(20);
-      localStorage.setItem(key,JSON.stringify(saved));
-      console.log('Synced '+added+' round(s) from GitHub for team '+( activeTeam?activeTeam.name:'default'));
+      localStorage.setItem('clayai_rounds',JSON.stringify(saved));
+      console.log('Synced '+added+' round(s) from GitHub');
     }
-  }catch(e){console.warn('GitHub round sync failed:',e.message);}
+  }catch(e){
+    console.warn('GitHub round sync failed:',e.message); // non-fatal
+  }
 }
 
 async function buildSetup(){
   showSyncing(true);
-  const teams=await ghFetchTeams();
+  const roster=await ghFetchRoster();
   showSyncing(false);
 
-  // Restore active team
-  const savedId=loadActiveTeamId();
-  activeTeam=teams.find(t=>t.id===savedId)||teams[0]||null;
-  if(activeTeam)saveActiveTeamId(activeTeam.id);
-
-  renderTeamSelector(teams);
-
-  const roster=loadRoster();
   const rl=document.getElementById('rosterList');
   const wasVisible=rl.style.display==='block';
   rl.innerHTML='';
-  if(!activeTeam){
-    const empty=document.createElement('div');
-    empty.style.cssText='text-align:center;color:var(--dim);font-size:13px;padding:14px;font-family:\'Share Tech Mono\',monospace';
-    empty.textContent='No teams yet — tap ⚙ Teams to create one';
-    rl.appendChild(empty);
-  } else if(!roster.length){
+  if(!roster.length){
     const empty=document.createElement('div');
     empty.style.cssText='text-align:center;color:var(--dim);font-size:13px;padding:14px;font-family:\'Share Tech Mono\',monospace';
     empty.textContent='No members yet — tap + Add Member';
@@ -815,8 +683,6 @@ async function finishRound(){
   const data={
     id,
     date:new Date().toLocaleString(),
-    teamId:activeTeam?activeTeam.id:null,
-    teamName:activeTeam?activeTeam.name:null,
     results:ranked.map(r=>({
       rank:r.rank,name:r.name,color:r.color,hits:r.hits,
       pct:Math.round(r.hits/25*100),
@@ -835,20 +701,22 @@ async function finishRound(){
   showSyncing(false);
   if(synced){
     try{
-      const key=roundsKey();
-      const saved=JSON.parse(localStorage.getItem(key)||'[]');
+      const saved=JSON.parse(localStorage.getItem('clayai_rounds')||'[]');
       const match=saved.find(r=>r.id===id);
-      if(match){match.ghSynced=true;localStorage.setItem(key,JSON.stringify(saved));}
+      if(match){match.ghSynced=true;localStorage.setItem('clayai_rounds',JSON.stringify(saved));}
     }catch(e){}
   }
 }
 
 function buildReportURL(data){
-  var fname=teamRoundFilename(data.id);
-  var path=teamReportsPath()+'/'+fname;
-  return 'https://trapshootingai.github.io/TrapAI/roundreport.html?report='+encodeURIComponent(path);
+  var d=new Date(data.id||Date.now());
+  var p=function(n){return String(n).padStart(2,'0');};
+  var fname='round_'
+    +d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())
+    +'_'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds())
+    +'_'+(data.id||Date.now())+'.json';
+  return 'https://trapshootingai.github.io/TrapAI/roundreport.html?report=reports/'+fname;
 }
-
 
 function showReport(data){
   document.getElementById('wrapper').style.display='none';
@@ -1092,22 +960,48 @@ function buildReportHTML(data){
     +'<div class="tbl-wrap"><table class="rtbl stbl"><thead><tr>'
     +'<th class="tl" style="width:18%">SHOOTER</th><th style="width:10%">TOTAL</th>'
     +'<th style="width:14%">STATION 1</th><th style="width:14%">STATION 2</th><th style="width:14%">STATION 3</th><th style="width:14%">STATION 4</th><th style="width:14%">STATION 5</th>'
+    +'</tr></thead><tbody>'+shotRows+'</tbody></table></div>'
+    +'<div class="rpt-footer"><span>🎯 ClayTarget Trap Scoring</span>'
+    +'<span>'+data.shooterCount+' shooters · 5 stations · 25 shots</span>'
+    +'<span style="font-family:\'Share Tech Mono\',monospace;font-size:11px">'+syncLabel+'</span>'
+    +'<span>'+data.date+'</span></div>'
+    +'</div></div>';
+}
+
+function buildPodiumHTML(results){
+  if(!results||!results.length)return '';
+  const byRank={};results.forEach(r=>{if(!byRank[r.rank])byRank[r.rank]=[];byRank[r.rank].push(r);});
+  const cfg={1:{medal:'🥇',color:'#d4af37',height:160,label:'1st Place'},2:{medal:'🥈',color:'#9e9e9e',height:115,label:'2nd Place'},3:{medal:'🥉',color:'#cd7f32',height:80,label:'3rd Place'}};
+  const slots=[2,1,3].map(rank=>{
+    const group=byRank[rank];if(!group||!group.length)return '';
+    const c=cfg[rank];const isTied=group.length>1;
+    const score=group[0].hits;const pct=group[0].pct;
+    const scoreColor=pct>=80?'#155724':pct>=60?'#7a5000':'#721c24';
+    const nameRows=group.map(r=>'<div>'+c.medal+' '+r.name+'</div>').join('');
+    return '<div class="podium-slot">'
+      +'<div class="podium-names">'+nameRows+'</div>'
+      +'<div class="podium-score" style="color:'+scoreColor+'">'+score+'/25</div>'
+      +'<div class="podium-pct">'+pct+'%</div>'
+      +(isTied?'<div class="podium-tie">🤝 TIE — SAME PLACE</div>':'<div style="height:22px"></div>')
+      +'<div class="podium-bar" style="height:'+c.height+'px;background:'+c.color+';width:'+(isTied?group.length*100:100)+'px">'+c.label+'</div>'
+      +'</div>';
+  }).join('');
+  return '<div class="podium-wrap">'+slots+'</div>';
+}
 
 // ── Local storage ─────────────────────────────────────────
 function saveRound(data){
   try{
-    const key=roundsKey();
-    const saved=JSON.parse(localStorage.getItem(key)||'[]');
+    const saved=JSON.parse(localStorage.getItem('clayai_rounds')||'[]');
     saved.unshift({...data});
     if(saved.length>20)saved.splice(20);
-    localStorage.setItem(key,JSON.stringify(saved));
+    localStorage.setItem('clayai_rounds',JSON.stringify(saved));
   }catch(e){}
 }
 
 function loadSavedRounds(){
   try{
-    const key=roundsKey();
-    const saved=JSON.parse(localStorage.getItem(key)||'[]');
+    const saved=JSON.parse(localStorage.getItem('clayai_rounds')||'[]');
     const wrap=document.getElementById('savedToggleWrap');
     if(!saved.length){wrap.style.display='none';setMode=false;setSelections.clear();return;}
     wrap.style.display='block';
@@ -1127,12 +1021,15 @@ function loadSavedRounds(){
 
     const rounds=saved.slice(0,10);
     let html='';
+
+    // Header row with Build Set toggle
     html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
       +'<span style="font-family:\'Share Tech Mono\',monospace;font-size:11px;color:var(--dim)">'+saved.length+' round'+(saved.length!==1?'s':'')+' saved</span>'
       +'<button class="btn" onclick="toggleSetMode()" style="padding:4px 12px;font-size:12px">'
       +(setMode?'✕ Cancel':'📋 Build Set')+'</button>'
       +'</div>';
 
+    // Round items
     html+=rounds.map((r,i)=>{
       const top=r.results[0];
       const names=r.results.map(x=>x.name).join(', ');
@@ -1141,7 +1038,7 @@ function loadSavedRounds(){
         :'<div class="si-sync pend">○ Local only</div>';
       const isSel=setSelections.has(i);
       if(setMode){
-        return '<div class="saved-item'+(isSel?' set-selected':'')+'\" onclick="toggleSetSelection('+i+')" style="cursor:pointer">'
+        return '<div class="saved-item'+(isSel?' set-selected':'')+'" onclick="toggleSetSelection('+i+')" style="cursor:pointer">'
           +'<div class="set-check'+(isSel?' on':'')+'">'+( isSel?'✓':'')+'</div>'
           +'<div style="flex:1">'
           +'<div class="si-date">'+r.date+'</div>'
@@ -1162,12 +1059,13 @@ function loadSavedRounds(){
         +'</div>';
     }).join('');
 
+    // Set action bar — shows when 2+ rounds selected
     if(setMode){
       const n=setSelections.size;
       html+='<div class="set-action-bar">'
         +'<span style="font-family:\'Share Tech Mono\',monospace;font-size:12px;color:var(--accent);flex:1">'
         +(n<2?'Select 2 rounds to build a set':n===2?'2 rounds selected — ready!':'')+'</span>'
-        +'<button class="start-btn" style="padding:10px 18px;font-size:14px;width:auto;'+(n<2?'opacity:0.35;cursor:default':'')+'\" '
+        +'<button class="start-btn" style="padding:10px 18px;font-size:14px;width:auto;'+(n<2?'opacity:0.35;cursor:default':'')+'" '
         +(n>=2?'onclick="viewSetReport()"':'disabled')+'>'
         +'📊 View Set Report'
         +'</button>'
@@ -1178,25 +1076,41 @@ function loadSavedRounds(){
   }catch(e){document.getElementById('savedToggleWrap').style.display='none';}
 }
 
-function toggleSetMode(){setMode=!setMode;setSelections.clear();loadSavedRounds();}
+function toggleSetMode(){
+  setMode=!setMode;
+  setSelections.clear();
+  loadSavedRounds();
+}
 
 function toggleSetSelection(idx){
   if(setSelections.has(idx)){
     setSelections.delete(idx);
   } else {
-    if(setSelections.size>=2){const first=setSelections.values().next().value;setSelections.delete(first);}
+    if(setSelections.size>=2){
+      // Swap out the oldest selection for the new one
+      const first=setSelections.values().next().value;
+      setSelections.delete(first);
+    }
     setSelections.add(idx);
   }
   loadSavedRounds();
 }
 
-function reportPathFromId(id){return teamReportsPath()+'/'+teamRoundFilename(id);}
+function reportPathFromId(id){
+  var d=new Date(id);
+  var p=function(n){return String(n).padStart(2,'0');};
+  return 'reports/round_'
+    +d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())
+    +'_'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds())
+    +'_'+id+'.json';
+}
 
 function viewSetReport(){
   try{
-    const saved=JSON.parse(localStorage.getItem(roundsKey())||'[]');
+    const saved=JSON.parse(localStorage.getItem('clayai_rounds')||'[]');
     const selected=Array.from(setSelections).sort((a,b)=>a-b).map(i=>saved[i]).filter(Boolean);
     if(selected.length<2){alert('Select at least 2 rounds.');return;}
+    // Check all rounds have an id to build the path
     const params=selected.map(r=>'r='+encodeURIComponent(reportPathFromId(r.id))).join('&');
     window.open('https://trapshootingai.github.io/TrapAI/setreport.html?'+params,'_blank');
   }catch(e){alert('Could not build set: '+e.message);}
@@ -1204,16 +1118,10 @@ function viewSetReport(){
 
 function deleteSavedRound(idx){
   try{
-    const key=roundsKey();
-    const saved=JSON.parse(localStorage.getItem(key)||'[]');
-    saved.splice(idx,1);localStorage.setItem(key,JSON.stringify(saved));loadSavedRounds();
+    const saved=JSON.parse(localStorage.getItem('clayai_rounds')||'[]');
+    saved.splice(idx,1);localStorage.setItem('clayai_rounds',JSON.stringify(saved));loadSavedRounds();
   }catch(e){}
 }
-function viewSavedRound(idx){
-  try{const saved=JSON.parse(localStorage.getItem(roundsKey())||'[]');const data=saved[idx];if(!data)return;showReport(data);}
-  catch(e){alert('Could not load: '+e.message);}
-}
-
 function viewSavedRound(idx){
   try{const saved=JSON.parse(localStorage.getItem('clayai_rounds')||'[]');const data=saved[idx];if(!data)return;showReport(data);}
   catch(e){alert('Could not load: '+e.message);}
