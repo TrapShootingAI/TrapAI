@@ -672,37 +672,9 @@ function showReport(data){
   newBtn.textContent='⟳ New Round';
   newBtn.onclick=function(){resetAll();return false;};
 
-  // ── Share Report button ───────────────────────────────────
-  const shareBtn=document.createElement('button');
-  shareBtn.style.cssText='padding:10px 20px;background:transparent;color:#00e5ff;border:1px solid #00e5ff;border-radius:4px;font-size:15px;font-weight:700;cursor:pointer;transition:background 0.2s;';
-  shareBtn.textContent='🔗 Share Report';
-  shareBtn.onclick=function(){
-    const url=buildReportURL(data);
-    // Try native share sheet first (mobile), fall back to clipboard
-    if(navigator.share){
-      navigator.share({
-        title:'Trap Round — '+data.date,
-        text:'Check out the scorecard for our trap round!',
-        url
-      }).catch(function(){});
-    } else {
-      navigator.clipboard.writeText(url).then(function(){
-        shareBtn.textContent='✓ Copied!';
-        shareBtn.style.background='rgba(0,229,255,0.15)';
-        setTimeout(function(){
-          shareBtn.textContent='🔗 Share Report';
-          shareBtn.style.background='transparent';
-        },2000);
-      }).catch(function(){
-        // Last resort — prompt so they can copy manually
-        window.prompt('Copy this link:',url);
-      });
-    }
-    return false;
-  };
+  // ── Share Report button removed — link is included in the SMS ──
 
   bar.appendChild(label);
-  bar.appendChild(shareBtn);
 
   const shootersWithPhone=(data.results||[]).filter(function(r){return r.phone;});
   if(shootersWithPhone.length){
@@ -729,12 +701,7 @@ function showReport(data){
       function sendNext(){
         if(idx>=shootersWithPhone.length)return;
         const r=shootersWithPhone[idx++];
-        const msg='🎯 Hey '+r.name+'! Your trap scores:\n\n'
-          +medalStr(r.rank)+' YOU: '+r.hits+'/25 ('+r.pct+'%)\n'
-          +'Stations: '+buildStnLine(r)+'\n\n'
-          +'Full standings:\n'+standings
-          +'\n\n📊 Full report: '+url
-          +'\n\n— ClayTarget Trap Scoring';
+        const msg='Check out the scorecard for our trap round!\n'+url;
         const a=document.createElement('a');
         a.href='sms:'+r.phone+sep+'body='+encodeURIComponent(msg);
         a.style.display='none';document.body.appendChild(a);a.click();document.body.removeChild(a);
