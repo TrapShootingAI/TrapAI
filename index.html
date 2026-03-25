@@ -246,6 +246,10 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
         <span>Trap Field Scoring</span>
       </div>
     </div>
+    <div id="setupHeaderBtns" style="display:flex;gap:8px;align-items:center">
+      <button class="btn" onclick="toggleRoster()" id="rosterToggleBtn">👥 Manage Teams</button>
+      <button class="btn" onclick="openAddTeam()">+ Add Team</button>
+    </div>
     <div class="hchips" id="hchips" style="display:none">
       <div class="chip"><span class="v" id="cRot">1/5</span><span class="l">ROTATION</span></div>
       <div class="chip"><span class="v" id="cRound">1/5</span><span class="l">ROUND SHOT</span></div>
@@ -257,34 +261,31 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
 
   <div id="setupScreen">
     <div class="panel">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-        <div class="ptitle" style="margin-bottom:0">👥 Assign Stations</div>
-        <div style="display:flex;gap:8px">
-          <button class="btn" onclick="toggleRoster()" id="rosterToggleBtn">👥 Manage Teams</button>
-          <button class="btn" onclick="openAddTeam()">+ Add Team</button>
-        </div>
-      </div>
       <div id="rosterList" style="display:none;margin-bottom:16px;position:relative;z-index:10"></div>
       <div id="teamSelectorWrap" style="display:none;margin-bottom:14px">
         <label style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--dim);display:block;margin-bottom:6px">SELECT TEAM</label>
         <select class="ninput" id="activeTeamSelect" onchange="onActiveTeamChange(this.value)" style="cursor:pointer;font-size:15px;font-weight:600"></select>
       </div>
-      <div class="setup-grid" id="setupGrid"></div>
+      <div id="teamRequiredMsg" style="display:none;text-align:center;color:var(--dim);font-size:14px;padding:24px;font-family:'Share Tech Mono',monospace;border:1px dashed var(--border);border-radius:8px;margin-bottom:14px">Select a team above to assign stations</div>
+      <div id="stationsSection" style="display:none">
+        <div class="ptitle" style="margin-bottom:10px">👥 Assign Stations</div>
+        <div class="setup-grid" id="setupGrid"></div>
 
-      <!-- Primary action -->
-      <button class="start-btn" onclick="startRound()">🎯 START NEW ROUND</button>
-      <a href="claytargetanalytics.html" style="display:block;width:100%;padding:12px;margin-top:8px;background:transparent;border:1px solid var(--accent);color:var(--accent);font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;letter-spacing:2px;text-transform:uppercase;text-align:center;text-decoration:none;border-radius:6px;transition:background 0.2s" onmouseover="this.style.background='rgba(0,229,255,0.1)'" onmouseout="this.style.background='transparent'">📊 VIEW ANALYTICS</a>
+        <!-- Primary action -->
+        <button class="start-btn" onclick="startRound()">🎯 START NEW ROUND</button>
 
-      <!-- Saved rounds — collapsible below start button -->
-      <div id="savedToggleWrap" style="display:none">
-        <button class="saved-toggle" id="savedToggleBtn" onclick="toggleSavedDrawer()">
-          <span>📁 Saved Rounds<span class="saved-badge" id="savedBadge">0</span></span>
-          <span class="arr">▼</span>
-        </button>
-        <div class="saved-drawer" id="savedDrawer">
-          <div id="savedList"></div>
+        <!-- Saved rounds — collapsible below start button -->
+        <div id="savedToggleWrap" style="display:none">
+          <button class="saved-toggle" id="savedToggleBtn" onclick="toggleSavedDrawer()">
+            <span>📁 Saved Rounds<span class="saved-badge" id="savedBadge">0</span></span>
+            <span class="arr">▼</span>
+          </button>
+          <div class="saved-drawer" id="savedDrawer">
+            <div id="savedList"></div>
+          </div>
         </div>
       </div>
+      <a href="claytargetanalytics.html" style="display:block;width:100%;padding:12px;margin-top:8px;background:transparent;border:1px solid var(--accent);color:var(--accent);font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;letter-spacing:2px;text-transform:uppercase;text-align:center;text-decoration:none;border-radius:6px;transition:background 0.2s" onmouseover="this.style.background='rgba(0,229,255,0.1)'" onmouseout="this.style.background='transparent'">📊 VIEW ANALYTICS</a>
     </div>
   </div>
 
@@ -660,7 +661,7 @@ function showSyncing(on){document.getElementById('syncStatus').style.display=on?
 
 // ── Active team selection ──────────────────────────────────
 function onActiveTeamChange(val){
-  selectedActiveTeam=val;
+  selectedActiveTeam=val||'ALL';
   buildSetup();
 }
 
@@ -773,7 +774,7 @@ async function buildSetup(){
       // Members body
       const membersDiv=document.createElement('div');
       membersDiv.className='team-members';
-      membersDiv.style.display='block';
+      membersDiv.style.display='none';
 
       team.members.forEach(function(m,mi){
         const row=document.createElement('div');
@@ -843,19 +844,26 @@ async function buildSetup(){
   // Build team selector
   const teamSelWrap=document.getElementById('teamSelectorWrap');
   const teamSel=document.getElementById('activeTeamSelect');
+  const stationsSection=document.getElementById('stationsSection');
+  const teamReqMsg=document.getElementById('teamRequiredMsg');
   if(teams.length>0){
     teamSelWrap.style.display='block';
-    let teamOpts='';
-    if(teams.length>1) teamOpts='<option value="ALL">All Teams</option>';
+    let teamOpts='<option value="">— Select a Team —</option>';
     teams.forEach(function(t){
       teamOpts+='<option value="'+t.id+'"'+(selectedActiveTeam===t.id?' selected':'')+'>'+t.name+'</option>';
     });
     teamSel.innerHTML=teamOpts;
-    // Auto-select first team if only one or none selected yet
+    // Auto-select first team if only one
     if(selectedActiveTeam==='ALL'&&teams.length===1) selectedActiveTeam=teams[0].id;
     if(selectedActiveTeam!=='ALL') teamSel.value=selectedActiveTeam;
+    // Show/hide stations based on team selection
+    const teamPicked=selectedActiveTeam!=='ALL';
+    stationsSection.style.display=teamPicked?'block':'none';
+    teamReqMsg.style.display=teamPicked?'none':'block';
   } else {
     teamSelWrap.style.display='none';
+    stationsSection.style.display='none';
+    teamReqMsg.style.display='none';
   }
 
   // Build station dropdowns filtered by selected team
@@ -908,6 +916,7 @@ function startRound(){
   rotation=1;roundShot=1;shooterTurnIdx=0;waitRotate=false;roundDone=false;roundResults=null;
   roundStartTime=new Date();buildActiveOrder();
   document.getElementById('setupScreen').style.display='none';
+  document.getElementById('setupHeaderBtns').style.display='none';
   document.getElementById('mainScreen').style.display='block';
   document.getElementById('reportScreen').style.display='none';
   document.getElementById('reportScreen').innerHTML='';
@@ -1485,6 +1494,7 @@ function resetAll(){
   closeModal();
   document.getElementById('wrapper').style.display='block';
   document.getElementById('setupScreen').style.display='block';
+  document.getElementById('setupHeaderBtns').style.display='flex';
   document.getElementById('mainScreen').style.display='none';
   document.getElementById('reportScreen').style.display='none';
   document.getElementById('reportScreen').innerHTML='';

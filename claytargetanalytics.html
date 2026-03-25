@@ -483,9 +483,11 @@ function aggregateShooters(rounds) {
   const map = {};
   for (const round of rounds) {
     for (const result of (round.results || [])) {
-      const name = result.name;
-      if (!map[name]) map[name] = { name, color: result.color || '#00e5ff', rounds: [] };
-      map[name].rounds.push({
+      // Key by name+teamId so same name on different teams stays separate
+      const teamId = result.teamId || '';
+      const key = result.name + '||' + teamId;
+      if (!map[key]) map[key] = { name: result.name, key, teamId, team: result.team || '', teamColor: result.teamColor || '', color: result.color || '#00e5ff', rounds: [] };
+      map[key].rounds.push({
         ts: round._ts,
         score: result.hits,
         pct: result.pct || Math.round(result.hits / 25 * 100),
@@ -494,9 +496,9 @@ function aggregateShooters(rounds) {
       });
     }
   }
-  for (const name in map) {
-    map[name].rounds.sort((a, b) => a.ts - b.ts);
-    computeStats(map[name]);
+  for (const key in map) {
+    map[key].rounds.sort((a, b) => a.ts - b.ts);
+    computeStats(map[key]);
   }
   return map;
 }
@@ -554,19 +556,21 @@ function aggregateTeams(rounds) {
     for (const result of (round.results || [])) {
       if (!result.team) continue;
       const key = result.team;
-      if (!map[key]) map[key] = { name: result.team, color: result.teamColor || '#4a6a7a', teamId: result.teamId || '', rounds: [], members: new Set() };
+      if (!map[key]) map[key] = { name: result.team, color: result.teamColor || '#4a6a7a', teamId: result.teamId || '', rounds: [], members: new Set(), memberKeys: new Set() };
       map[key].members.add(result.name);
+      map[key].memberKeys.add(result.name + '||' + (result.teamId || ''));
     }
   }
   // Compute per-team stats from member shooter stats
   for (const key in map) {
     const team = map[key];
     const memberNames = Array.from(team.members);
+    const memberKeys = Array.from(team.memberKeys);
     let totalScore = 0, totalRounds = 0, bestAvg = 0;
     const memberStats = [];
-    for (const name of memberNames) {
-      if (allShooters[name]) {
-        const s = allShooters[name];
+    for (const mk of memberKeys) {
+      if (allShooters[mk]) {
+        const s = allShooters[mk];
         totalScore += s.rounds.reduce((a, r) => a + r.score, 0);
         totalRounds += s.totalRounds;
         if (s.weightedAvg > bestAvg) bestAvg = s.weightedAvg;
@@ -578,6 +582,7 @@ function aggregateTeams(rounds) {
     team.avgScore = totalRounds > 0 ? totalScore / totalRounds : 0;
     team.bestMemberAvg = bestAvg;
     team.memberNames = memberNames;
+    team.memberKeys = memberKeys;
     team.memberStatsList = memberStats;
 
     // Team weighted avg = average of member weighted avgs
@@ -600,18 +605,21 @@ async function mergeRegisteredTeams() {
       if (!team.name) continue;
       if (!allTeamStats[team.name]) {
         // Team exists in teams.json but has no round data yet — add it with zero stats
+        const mNames = team.members ? team.members.map(m => m.name) : [];
+        const mKeys = team.members ? team.members.map(m => m.name + '||' + (team.id || '')) : [];
         allTeamStats[team.name] = {
           name: team.name,
           color: team.color || '#4a6a7a',
           teamId: team.id || '',
           rounds: [],
-          members: new Set(team.members ? team.members.map(m => m.name) : []),
-          memberCount: team.members ? team.members.length : 0,
+          members: new Set(mNames),
+          memberCount: mNames.length,
           totalRounds: 0,
           avgScore: 0,
           bestMemberAvg: 0,
           weightedAvg: 0,
-          memberNames: team.members ? team.members.map(m => m.name) : [],
+          memberNames: mNames,
+          memberKeys: mKeys,
           memberStatsList: []
         };
       } else {
@@ -619,10 +627,15 @@ async function mergeRegisteredTeams() {
         if (team.color) allTeamStats[team.name].color = team.color;
         // Add any members from teams.json not already tracked
         if (team.members) {
+          if (!allTeamStats[team.name].memberKeys) allTeamStats[team.name].memberKeys = [];
           for (const m of team.members) {
+            const mk = m.name + '||' + (team.id || '');
             if (!allTeamStats[team.name].memberNames.includes(m.name)) {
               allTeamStats[team.name].memberNames.push(m.name);
               allTeamStats[team.name].memberCount = allTeamStats[team.name].memberNames.length;
+            }
+            if (!allTeamStats[team.name].memberKeys.includes(mk)) {
+              allTeamStats[team.name].memberKeys.push(mk);
             }
           }
         }
@@ -661,8 +674,8 @@ function buildShooterDropdown() {
 
   // Filter by selected team
   if (selectedTeam !== 'ALL' && allTeamStats[selectedTeam]) {
-    const teamMembers = allTeamStats[selectedTeam].memberNames;
-    shooters = shooters.filter(s => teamMembers.includes(s.name));
+    const teamKeys = allTeamStats[selectedTeam].memberKeys || [];
+    shooters = shooters.filter(s => teamKeys.includes(s.key));
   }
 
   if (!Object.keys(allShooters).length) { bar.style.display = 'none'; return; }
@@ -670,7 +683,8 @@ function buildShooterDropdown() {
 
   let html = `<option value="ALL">👥 All Shooters</option>`;
   for (const s of shooters) {
-    html += `<option value="${s.name}">${s.name}  ·  avg ${s.avg.toFixed(1)}/25</option>`;
+    const teamLabel = s.team ? ' (' + s.team + ')' : '';
+    html += `<option value="${s.key}">${s.name}${teamLabel}  ·  avg ${s.avg.toFixed(1)}/25</option>`;
   }
   sel.innerHTML = html;
   sel.value = selectedShooter;
@@ -703,18 +717,19 @@ function render() {
 
   // Filter by team if selected
   if (selectedTeam !== 'ALL' && allTeamStats[selectedTeam]) {
-    const teamMembers = allTeamStats[selectedTeam].memberNames;
-    shooters = shooters.filter(s => teamMembers.includes(s.name));
+    const teamKeys = allTeamStats[selectedTeam].memberKeys || [];
+    shooters = shooters.filter(s => teamKeys.includes(s.key));
   }
 
   const filtered = selectedShooter === 'ALL'
     ? shooters
-    : shooters.filter(s => s.name === selectedShooter);
+    : shooters.filter(s => s.key === selectedShooter);
 
   // Summary strip
+  const selShooterObj = allShooters[selectedShooter];
   const visibleRounds = selectedShooter === 'ALL'
     ? allRounds
-    : allRounds.filter(r => r.results?.some(res => res.name === selectedShooter));
+    : allRounds.filter(r => r.results?.some(res => (res.name + '||' + (res.teamId || '')) === selectedShooter));
   const dateRange = visibleRounds.length > 1
     ? fmtDate(visibleRounds[0]._ts) + ' – ' + fmtDate(visibleRounds[visibleRounds.length-1]._ts)
     : visibleRounds.length ? fmtDate(visibleRounds[0]._ts) : '—';
@@ -817,19 +832,20 @@ function renderLeaderboard(shooters) {
 
   for (let i = 0; i < shooters.length; i++) {
     const s = shooters[i];
-    const isDimmed = selectedShooter !== 'ALL' && s.name !== selectedShooter;
+    const isDimmed = selectedShooter !== 'ALL' && s.key !== selectedShooter;
     const wAvg = s.weightedAvg.toFixed(1);
     const barPct = Math.round(s.weightedAvg / 25 * 100);
     const barColor = barPct >= 80 ? 'var(--hit)' : barPct >= 60 ? 'var(--gold)' : 'var(--miss)';
     const trendSym = s.trend === 'up' ? '↑' : s.trend === 'down' ? '↓' : '→';
     const trendCol = s.trend === 'up' ? 'var(--hit)' : s.trend === 'down' ? 'var(--miss)' : 'var(--accent)';
+    const escapedKey = s.key.replace(/'/g,"\\'");
 
-    html += `<tr class="${isDimmed ? 'dimmed' : ''}" onclick="selectShooter('${s.name.replace(/'/g,"\\'")}');" style="cursor:pointer">
+    html += `<tr class="${isDimmed ? 'dimmed' : ''}" onclick="selectShooter('${escapedKey}');" style="cursor:pointer">
       <td style="font-size:16px;width:28px">${medals[i] || (i+1)+'.'}</td>
       <td>
         <div style="display:flex;align-items:center;gap:8px">
           <div style="width:26px;height:26px;border-radius:50%;background:${s.color};display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;color:#000;flex-shrink:0">${s.name.charAt(0)}</div>
-          <span class="lb-name">${s.name}${(() => { const t = findShooterTeam(s.name); return t ? '<span class="team-badge" style="background:' + (t.color||'#4a6a7a') + '22;color:' + (t.color||'#4a6a7a') + '">' + t.name + '</span>' : ''; })()}</span>
+          <span class="lb-name">${s.name}${(() => { const t = findShooterTeam(s.key); return t ? '<span class="team-badge" style="background:' + (t.color||'#4a6a7a') + '22;color:' + (t.color||'#4a6a7a') + '">' + t.name + '</span>' : ''; })()}</span>
         </div>
       </td>
       <td class="rc" style="color:${s.color};font-weight:700">${wAvg}</td>
@@ -861,12 +877,12 @@ function renderCard(s) {
     : fmtDate(s.rounds[0].ts);
   const avgColor = s.avg >= 20 ? 'var(--hit)' : s.avg >= 15 ? 'var(--gold)' : 'var(--miss)';
 
-  const isExpanded = selectedShooter === 'ALL' || selectedShooter === s.name;
+  const isExpanded = selectedShooter === 'ALL' || selectedShooter === s.key;
 
   let html = `<div class="shooter-card${isExpanded ? ' expanded' : ''}" onclick="this.classList.toggle('expanded');event.stopPropagation()">`;
 
   // Find shooter's team
-  const shooterTeam = findShooterTeam(s.name);
+  const shooterTeam = findShooterTeam(s.key);
   const teamBadgeHTML = shooterTeam ? `<span class="team-badge" style="background:${(shooterTeam.color||'#4a6a7a')}22;color:${shooterTeam.color||'#4a6a7a'}">${shooterTeam.name}</span>` : '';
 
   // Header
@@ -1030,12 +1046,15 @@ function trendSVG(rounds, color) {
 }
 
 // ── Utilities ──────────────────────────────────────────────
-function findShooterTeam(name) {
+function findShooterTeam(shooterKey) {
   for (const key in allTeamStats) {
-    if (allTeamStats[key].memberNames.includes(name)) {
-      return allTeamStats[key];
-    }
+    const t = allTeamStats[key];
+    if (t.memberKeys && t.memberKeys.includes(shooterKey)) return t;
+    if (t.memberNames && t.memberNames.includes(shooterKey)) return t;
   }
+  // Fallback: check by shooter's stored team/teamId
+  const s = allShooters[shooterKey];
+  if (s && s.team && allTeamStats[s.team]) return allTeamStats[s.team];
   return null;
 }
 function avg(a) { return a.length ? a.reduce((s, v) => s + v, 0) / a.length : 0; }
