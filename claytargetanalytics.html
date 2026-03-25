@@ -296,6 +296,17 @@ async function init() {
   // Build team dropdown
   buildTeamSelect();
   show('teamBar');
+
+  // Auto-select team if passed from index page via ?team= param
+  const preselectedTeam = params.get('team');
+  if (preselectedTeam) {
+    const match = registeredTeams.find(t => t.id === preselectedTeam);
+    if (match) {
+      document.getElementById('teamSelect').value = preselectedTeam;
+      await onTeamChange(preselectedTeam);
+      return;
+    }
+  }
   show('teamPrompt');
 }
 
