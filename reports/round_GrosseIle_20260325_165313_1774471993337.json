@@ -1,0 +1,259 @@
+{
+  "id": 1774471993337,
+  "date": "3/25/2026, 4:53:13 PM",
+  "teamId": "team_1774396719365",
+  "teamName": "Grosse Ile",
+  "results": [
+    {
+      "rank": 1,
+      "name": "Mateo Parisi",
+      "color": "#00e5ff",
+      "hits": 22,
+      "pct": 88,
+      "stationScores": {
+        "1": [
+          true,
+          true,
+          false,
+          false,
+          true
+        ],
+        "2": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "3": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "4": [
+          false,
+          true,
+          true,
+          true,
+          true
+        ],
+        "5": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ]
+      },
+      "tiedWith": [
+        "Nolan Borg"
+      ],
+      "phone": "7343043647",
+      "team": "Grosse Ile",
+      "teamId": "team_1774396719365",
+      "teamColor": "#e91e63"
+    },
+    {
+      "rank": 1,
+      "name": "Nolan Borg",
+      "color": "#f59e0b",
+      "hits": 22,
+      "pct": 88,
+      "stationScores": {
+        "1": [
+          true,
+          true,
+          true,
+          true,
+          false
+        ],
+        "2": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "3": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "4": [
+          true,
+          true,
+          true,
+          true,
+          false
+        ],
+        "5": [
+          true,
+          true,
+          true,
+          true,
+          false
+        ]
+      },
+      "tiedWith": [
+        "Mateo Parisi"
+      ],
+      "phone": "7345751570",
+      "team": "Grosse Ile",
+      "teamId": "team_1774396719365",
+      "teamColor": "#e91e63"
+    },
+    {
+      "rank": 3,
+      "name": "Nathan",
+      "color": "#a855f7",
+      "hits": 17,
+      "pct": 68,
+      "stationScores": {
+        "1": [
+          false,
+          false,
+          true,
+          false,
+          true
+        ],
+        "2": [
+          true,
+          false,
+          true,
+          false,
+          true
+        ],
+        "3": [
+          true,
+          true,
+          false,
+          false,
+          true
+        ],
+        "4": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "5": [
+          false,
+          true,
+          true,
+          true,
+          true
+        ]
+      },
+      "tiedWith": [],
+      "phone": "",
+      "team": "Grosse Ile",
+      "teamId": "team_1774396719365",
+      "teamColor": "#e91e63"
+    },
+    {
+      "rank": 4,
+      "name": "Luke Donnelly",
+      "color": "#22c55e",
+      "hits": 13,
+      "pct": 52,
+      "stationScores": {
+        "1": [
+          false,
+          false,
+          false,
+          true,
+          true
+        ],
+        "2": [
+          true,
+          false,
+          false,
+          false,
+          true
+        ],
+        "3": [
+          true,
+          true,
+          false,
+          true,
+          false
+        ],
+        "4": [
+          true,
+          false,
+          true,
+          false,
+          true
+        ],
+        "5": [
+          true,
+          true,
+          true,
+          false,
+          false
+        ]
+      },
+      "tiedWith": [],
+      "phone": "",
+      "team": "Grosse Ile",
+      "teamId": "team_1774396719365",
+      "teamColor": "#e91e63"
+    },
+    {
+      "rank": 5,
+      "name": "Joe",
+      "color": "#ff6b35",
+      "hits": 10,
+      "pct": 40,
+      "stationScores": {
+        "1": [
+          false,
+          true,
+          false,
+          false,
+          false
+        ],
+        "2": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "3": [
+          true,
+          false,
+          false,
+          false,
+          false
+        ],
+        "4": [
+          true,
+          false,
+          false,
+          false,
+          true
+        ],
+        "5": [
+          true,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "tiedWith": [],
+      "phone": "",
+      "team": "Grosse Ile",
+      "teamId": "team_1774396719365",
+      "teamColor": "#e91e63"
+    }
+  ],
+  "hasTie": true,
+  "shooterCount": 5
+}
