@@ -78,6 +78,7 @@ body{background:#f2f4f7;font-family:Georgia,serif;color:#111}
 .tie-tag{display:inline-block;font-size:9px;background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:3px;padding:1px 5px;font-family:'Share Tech Mono',monospace;vertical-align:middle;margin-left:4px}
 .tie-box{background:#fffbea;border:1px solid #ffc107;border-radius:6px;padding:12px 16px;margin-top:16px;font-size:13px;color:#7a5c00;line-height:1.6}
 .rpt-footer{margin-top:36px;padding-top:14px;border-top:1px solid #e8eaf0;display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#aaa;font-family:'Share Tech Mono',monospace;flex-wrap:wrap;gap:8px}
+.team-badge{display:inline-block;font-size:9px;padding:1px 6px;border-radius:3px;font-family:'Share Tech Mono',monospace;font-weight:700;margin-left:6px;vertical-align:middle}
 
 /* ── Round divider strip ── */
 .round-strip{background:linear-gradient(135deg,#1a1a2e,#2d3748);border-radius:8px;padding:12px 18px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
@@ -178,6 +179,9 @@ function combineRounds(rounds) {
         map[name] = {
           name,
           color: result.color || '#00e5ff',
+          team: result.team || '',
+          teamColor: result.teamColor || '',
+          teamId: result.teamId || '',
           totalHits: 0,
           totalPossible: 0,
           stationHits:  {1:0,2:0,3:0,4:0,5:0},
@@ -253,6 +257,9 @@ function renderSetReport(rounds) {
   html += '<div class="rpt-sec">📊 Combined Standings</div>';
   html += buildCombinedTable(combined, rounds.length);
 
+  // ── Team Summary ──
+  html += buildSetTeamSummary(combined, rounds.length);
+
   // ── Individual Rounds ──
   html += '<div class="rpt-sec">🔫 Individual Rounds</div>';
   rounds.forEach((round, idx) => {
@@ -320,9 +327,10 @@ function buildCombinedTable(combined, numRounds) {
       const cls = pct===100?'pf':pct>=60?'pg':'pp';
       return '<td class="stn-v ' + cls + '">' + h + '/' + t + '</td>';
     }).join('');
+    var teamBadge = s.team ? '<span class="team-badge" style="background:' + ((s.teamColor||'#4a6a7a')+'22') + ';color:' + (s.teamColor||'#4a6a7a') + '">' + s.team + '</span>' : '';
     return '<tr>'
       + '<td class="r-medal">' + medal + '</td>'
-      + '<td class="tl">' + s.name + (isTied ? '<span class="tie-tag">TIE</span>' : '') + '</td>'
+      + '<td class="tl">' + s.name + teamBadge + (isTied ? '<span class="tie-tag">TIE</span>' : '') + '</td>'
       + '<td class="r-score">' + s.totalHits + '/' + s.totalPossible + '</td>'
       + '<td><span class="r-pct ' + pc + '">' + s.pct + '%</span></td>'
       + stnCells + '</tr>';
@@ -349,9 +357,10 @@ function buildRoundMiniTable(round) {
       const h = shots.filter(Boolean).length;
       return '<td class="stn-v ' + (h===5?'pf':h>=3?'pg':'pp') + '">' + h + '/5</td>';
     }).join('');
+    var teamBadge = r.team ? '<span class="team-badge" style="background:' + ((r.teamColor||'#4a6a7a')+'22') + ';color:' + (r.teamColor||'#4a6a7a') + '">' + r.team + '</span>' : '';
     return '<tr>'
       + '<td class="r-medal">' + medal + '</td>'
-      + '<td class="tl">' + r.name + (isTied ? '<span class="tie-tag">TIE</span>' : '') + '</td>'
+      + '<td class="tl">' + r.name + teamBadge + (isTied ? '<span class="tie-tag">TIE</span>' : '') + '</td>'
       + '<td class="r-score">' + r.hits + '/25</td>'
       + '<td><span class="r-pct ' + pc + '">' + r.pct + '%</span></td>'
       + stnCells + '</tr>';
@@ -363,6 +372,37 @@ function buildRoundMiniTable(round) {
     + '<th style="width:12%">TOTAL</th>'
     + '<th style="width:8%">PCT</th>'
     + '<th style="width:11%">S1</th><th style="width:11%">S2</th><th style="width:11%">S3</th><th style="width:11%">S4</th><th style="width:11%">S5</th>'
+    + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+}
+
+// ── Team Summary for Set ──────────────────────────────────
+function buildSetTeamSummary(combined, numRounds) {
+  var teamMap = {};
+  combined.forEach(function(s) {
+    if (!s.team) return;
+    if (!teamMap[s.team]) teamMap[s.team] = {name: s.team, color: s.teamColor || '#4a6a7a', totalHits: 0, totalPossible: 0, members: 0};
+    teamMap[s.team].totalHits += s.totalHits;
+    teamMap[s.team].totalPossible += s.totalPossible;
+    teamMap[s.team].members++;
+  });
+  var teams = Object.values(teamMap);
+  if (teams.length < 1) return '';
+  teams.sort(function(a, b) { return (b.totalHits / b.totalPossible) - (a.totalHits / a.totalPossible); });
+  var rows = teams.map(function(t) {
+    var avgPerRound = t.members > 0 ? (t.totalHits / t.members / numRounds).toFixed(1) : '0';
+    var pct = t.totalPossible > 0 ? Math.round(t.totalHits / t.totalPossible * 100) : 0;
+    var pc = pct >= 80 ? 'g' : pct >= 60 ? 'o' : 'p';
+    return '<tr>'
+      + '<td class="tl"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + t.color + ';margin-right:6px;vertical-align:middle"></span>' + t.name + '</td>'
+      + '<td>' + t.members + '</td>'
+      + '<td class="r-score">' + t.totalHits + '/' + t.totalPossible + '</td>'
+      + '<td>' + avgPerRound + '</td>'
+      + '<td><span class="r-pct ' + pc + '">' + pct + '%</span></td>'
+      + '</tr>';
+  }).join('');
+  return '<div class="rpt-sec" style="border-left-color:#ffd700;color:#7a5000">👥 Team Summary</div>'
+    + '<div class="tbl-wrap"><table class="rtbl"><thead><tr>'
+    + '<th class="tl" style="width:25%">TEAM</th><th style="width:12%">MEMBERS</th><th style="width:15%">TOTAL</th><th style="width:12%">AVG/RND</th><th style="width:10%">PCT</th>'
     + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
 }
 

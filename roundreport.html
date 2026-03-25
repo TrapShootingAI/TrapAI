@@ -152,6 +152,7 @@ body{background:#f2f4f7;font-family:Georgia,serif;color:#111}
 .shot-pip.m{background:#dc3545}
 .tie-box{background:#fffbea;border:1px solid #ffc107;border-radius:6px;padding:12px 16px;margin-top:16px;font-size:13px;color:#7a5c00;line-height:1.6}
 .rpt-footer{margin-top:36px;padding-top:14px;border-top:1px solid #e8eaf0;display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#aaa;font-family:'Share Tech Mono',monospace;flex-wrap:wrap;gap:8px}
+.team-badge{display:inline-block;font-size:9px;padding:1px 6px;border-radius:3px;font-family:'Share Tech Mono',monospace;font-weight:700;margin-left:6px;vertical-align:middle}
 
 @media print{
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
@@ -295,8 +296,9 @@ function buildReportHTML(data) {
       const h = shots.filter(Boolean).length;
       return '<td class="stn-v ' + (h===5?'pf':h>=3?'pg':'pp') + '">' + h + '/5</td>';
     }).join('');
+    const teamBadge = r.team ? '<span class="team-badge" style="background:' + ((r.teamColor||'#4a6a7a')+'22') + ';color:' + (r.teamColor||'#4a6a7a') + '">' + r.team + '</span>' : '';
     return '<tr><td class="r-medal">' + medal + '</td>'
-      + '<td class="tl">' + r.name + (isTied ? '<span class="tie-tag">TIE</span>' : '') + '</td>'
+      + '<td class="tl">' + r.name + teamBadge + (isTied ? '<span class="tie-tag">TIE</span>' : '') + '</td>'
       + '<td class="r-score">' + r.hits + '/25</td>'
       + '<td><span class="r-pct ' + pc + '">' + r.pct + '%</span></td>'
       + stnCells + '</tr>';
@@ -317,6 +319,8 @@ function buildReportHTML(data) {
     ? '<div class="tie-box">⚠️ <strong>Note:</strong> This round ended in a tie. Tied shooters share the same rank and medal.</div>'
     : '';
 
+  const teamSummary = buildTeamSummaryHTML(data);
+
   return '<div class="rpt-card"><div class="rpt-body">'
     + '<div class="rpt-head">'
     + '<div class="rpt-eyebrow">Official Trap Shooting Scorecard</div>'
@@ -336,6 +340,7 @@ function buildReportHTML(data) {
     + '<th style="width:8%">S1</th><th style="width:8%">S2</th><th style="width:8%">S3</th><th style="width:8%">S4</th><th style="width:8%">S5</th>'
     + '</tr></thead><tbody>' + tableRows + '</tbody></table></div>'
     + tieNote
+    + teamSummary
     + '<div class="rpt-sec">🔫 Shot-by-Shot Breakdown</div>'
     + '<div class="tbl-wrap"><table class="rtbl stbl"><thead><tr>'
     + '<th class="tl" style="width:18%">SHOOTER</th><th style="width:10%">TOTAL</th>'
@@ -378,6 +383,37 @@ function buildPodiumHTML(results) {
       + '</div>';
   }).join('');
   return '<div class="podium-wrap">' + slots + '</div>';
+}
+
+// ── Team Summary ──────────────────────────────────────────
+function buildTeamSummaryHTML(data) {
+  if (!data.results) return '';
+  var teamMap = {};
+  data.results.forEach(function(r) {
+    if (!r.team) return;
+    if (!teamMap[r.team]) teamMap[r.team] = {name: r.team, color: r.teamColor || '#4a6a7a', totalHits: 0, members: 0};
+    teamMap[r.team].totalHits += r.hits;
+    teamMap[r.team].members++;
+  });
+  var teams = Object.values(teamMap);
+  if (teams.length < 1) return '';
+  teams.sort(function(a, b) { return (b.totalHits / b.members) - (a.totalHits / a.members); });
+  var rows = teams.map(function(t) {
+    var avg = (t.totalHits / t.members).toFixed(1);
+    var pct = Math.round(t.totalHits / (t.members * 25) * 100);
+    var pc = pct >= 80 ? 'g' : pct >= 60 ? 'o' : 'p';
+    return '<tr>'
+      + '<td class="tl"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + t.color + ';margin-right:6px;vertical-align:middle"></span>' + t.name + '</td>'
+      + '<td>' + t.members + '</td>'
+      + '<td class="r-score">' + t.totalHits + '/' + (t.members * 25) + '</td>'
+      + '<td>' + avg + '</td>'
+      + '<td><span class="r-pct ' + pc + '">' + pct + '%</span></td>'
+      + '</tr>';
+  }).join('');
+  return '<div class="rpt-sec">👥 Team Summary</div>'
+    + '<div class="tbl-wrap"><table class="rtbl"><thead><tr>'
+    + '<th class="tl" style="width:25%">TEAM</th><th style="width:12%">MEMBERS</th><th style="width:15%">TOTAL</th><th style="width:12%">AVG</th><th style="width:10%">PCT</th>'
+    + '</tr></thead><tbody>' + rows + '</tbody></table></div>';
 }
 
 // ── Helpers ────────────────────────────────────────────────
