@@ -262,10 +262,13 @@ header{display:flex;align-items:center;justify-content:space-between;padding:14p
         <div style="display:flex;gap:8px">
           <button class="btn" onclick="toggleRoster()" id="rosterToggleBtn">👥 Manage Teams</button>
           <button class="btn" onclick="openAddTeam()">+ Add Team</button>
-          <button class="btn" onclick="openAddMember()">+ Add Member</button>
         </div>
       </div>
       <div id="rosterList" style="display:none;margin-bottom:16px;position:relative;z-index:10"></div>
+      <div id="teamSelectorWrap" style="display:none;margin-bottom:14px">
+        <label style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--dim);display:block;margin-bottom:6px">SELECT TEAM</label>
+        <select class="ninput" id="activeTeamSelect" onchange="onActiveTeamChange(this.value)" style="cursor:pointer;font-size:15px;font-weight:600"></select>
+      </div>
       <div class="setup-grid" id="setupGrid"></div>
 
       <!-- Primary action -->
@@ -373,6 +376,7 @@ let shooters=[],scores={};
 // ── Set mode state ────────────────────────────────────────
 let setMode=false;
 let setSelections=new Set();
+let selectedActiveTeam='ALL';
 let rotation=1,roundShot=1,shooterTurnIdx=0;
 let waitRotate=false,roundDone=false,shootLog=[];
 let activeOrder=[],roundStartTime=null,roundResults=null;
@@ -654,6 +658,12 @@ function openEditMemberInTeam(teamId,memberIdx){
 }
 function showSyncing(on){document.getElementById('syncStatus').style.display=on?'block':'none';}
 
+// ── Active team selection ──────────────────────────────────
+function onActiveTeamChange(val){
+  selectedActiveTeam=val;
+  buildSetup();
+}
+
 // ── Saved rounds drawer ───────────────────────────────────
 function toggleSavedDrawer(){
   const drawer=document.getElementById('savedDrawer');
@@ -830,7 +840,25 @@ async function buildSetup(){
   }
   rl.style.display=wasVisible?'block':'none';
 
-  // Build station dropdowns grouped by team
+  // Build team selector
+  const teamSelWrap=document.getElementById('teamSelectorWrap');
+  const teamSel=document.getElementById('activeTeamSelect');
+  if(teams.length>0){
+    teamSelWrap.style.display='block';
+    let teamOpts='';
+    if(teams.length>1) teamOpts='<option value="ALL">All Teams</option>';
+    teams.forEach(function(t){
+      teamOpts+='<option value="'+t.id+'"'+(selectedActiveTeam===t.id?' selected':'')+'>'+t.name+'</option>';
+    });
+    teamSel.innerHTML=teamOpts;
+    // Auto-select first team if only one or none selected yet
+    if(selectedActiveTeam==='ALL'&&teams.length===1) selectedActiveTeam=teams[0].id;
+    if(selectedActiveTeam!=='ALL') teamSel.value=selectedActiveTeam;
+  } else {
+    teamSelWrap.style.display='none';
+  }
+
+  // Build station dropdowns filtered by selected team
   const allMembers=[];
   teams.forEach(function(t){
     t.members.forEach(function(m){
@@ -838,19 +866,21 @@ async function buildSetup(){
     });
   });
 
+  const filteredTeams=selectedActiveTeam==='ALL'?teams:teams.filter(function(t){return t.id===selectedActiveTeam;});
+
   const g=document.getElementById('setupGrid');g.innerHTML='';
   for(let i=0;i<5;i++){
     const c=COLORS[i];const d=document.createElement('div');
     d.className='scard on';d.id='sc'+i;
     let options='<option value="">— Empty —</option>';
-    teams.forEach(function(t){
+    filteredTeams.forEach(function(t){
       if(t.members.length){
-        options+='<optgroup label="'+t.name+'">';
+        if(filteredTeams.length>1) options+='<optgroup label="'+t.name+'">';
         t.members.forEach(function(m){
           const mi=allMembers.findIndex(function(am){return am.name===m.name&&am.teamId===t.id;});
           options+='<option value="'+mi+'">'+m.name+'</option>';
         });
-        options+='</optgroup>';
+        if(filteredTeams.length>1) options+='</optgroup>';
       }
     });
     d.innerHTML='<div class="ctop"><div class="snum" style="background:'+c+'">'+(i+1)+'</div>'
@@ -1301,9 +1331,16 @@ function saveRound(data){
 
 function loadSavedRounds(){
   try{
-    const saved=JSON.parse(localStorage.getItem('clayai_rounds')||'[]');
+    const allSaved=JSON.parse(localStorage.getItem('clayai_rounds')||'[]');
     const wrap=document.getElementById('savedToggleWrap');
+    if(!allSaved.length){wrap.style.display='none';setMode=false;setSelections.clear();return;}
+
+    // Filter saved rounds by selected team
+    const saved=selectedActiveTeam==='ALL'?allSaved:allSaved.filter(function(r){
+      return (r.results||[]).some(function(res){return res.teamId===selectedActiveTeam;});
+    });
     if(!saved.length){wrap.style.display='none';setMode=false;setSelections.clear();return;}
+
     wrap.style.display='block';
     document.getElementById('savedBadge').textContent=saved.length;
 

@@ -279,6 +279,10 @@ async function init() {
 
   allShooters = aggregateShooters(allRounds);
   allTeamStats = aggregateTeams(allRounds);
+
+  // Merge teams from teams.json so all registered teams appear even without round data
+  await mergeRegisteredTeams();
+
   selectedShooter = 'ALL';
   selectedTeam = 'ALL';
   buildTeamDropdown();
@@ -581,6 +585,52 @@ function aggregateTeams(rounds) {
     team.weightedAvg = wAvgs.length ? wAvgs.reduce((a, v) => a + v, 0) / wAvgs.length : 0;
   }
   return map;
+}
+
+// ── Merge registered teams from teams.json ───────────────
+async function mergeRegisteredTeams() {
+  try {
+    const res = await fetch(WORKER_URL + '?path=teams.json');
+    if (!res.ok) return;
+    const json = await res.json();
+    if (!json.content) return;
+    const teams = JSON.parse(atob(json.content.replace(/\n/g, '')));
+    if (!Array.isArray(teams)) return;
+    for (const team of teams) {
+      if (!team.name) continue;
+      if (!allTeamStats[team.name]) {
+        // Team exists in teams.json but has no round data yet — add it with zero stats
+        allTeamStats[team.name] = {
+          name: team.name,
+          color: team.color || '#4a6a7a',
+          teamId: team.id || '',
+          rounds: [],
+          members: new Set(team.members ? team.members.map(m => m.name) : []),
+          memberCount: team.members ? team.members.length : 0,
+          totalRounds: 0,
+          avgScore: 0,
+          bestMemberAvg: 0,
+          weightedAvg: 0,
+          memberNames: team.members ? team.members.map(m => m.name) : [],
+          memberStatsList: []
+        };
+      } else {
+        // Team exists — make sure color is up to date from teams.json
+        if (team.color) allTeamStats[team.name].color = team.color;
+        // Add any members from teams.json not already tracked
+        if (team.members) {
+          for (const m of team.members) {
+            if (!allTeamStats[team.name].memberNames.includes(m.name)) {
+              allTeamStats[team.name].memberNames.push(m.name);
+              allTeamStats[team.name].memberCount = allTeamStats[team.name].memberNames.length;
+            }
+          }
+        }
+      }
+    }
+  } catch(e) {
+    console.warn('Could not load registered teams:', e.message);
+  }
 }
 
 // ── Team filter ──────────────────────────────────────────
