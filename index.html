@@ -1363,9 +1363,25 @@ function loadSavedRounds(){
     if(!allSaved.length){wrap.style.display='none';setMode=false;setSelections.clear();return;}
 
     // Filter saved rounds by selected team
-    const saved=selectedActiveTeam==='ALL'?allSaved:allSaved.filter(function(r){
-      return (r.results||[]).some(function(res){return res.teamId===selectedActiveTeam;});
-    });
+    var saved=allSaved;
+    if(selectedActiveTeam!=='ALL'){
+      // Get selected team's member names for fallback matching
+      var selTeamMembers=[];
+      try{var tt=JSON.parse(localStorage.getItem('clayai_teams')||'[]');var st=tt.find(function(x){return x.id===selectedActiveTeam;});if(st)selTeamMembers=(st.members||[]).map(function(m){return m.name;});}catch(e){}
+      saved=allSaved.filter(function(r){
+        // 1. Check top-level teamId (new rounds)
+        if(r.teamId) return r.teamId===selectedActiveTeam;
+        // 2. Check result-level teamId
+        var hasTeamResult=(r.results||[]).some(function(res){return res.teamId===selectedActiveTeam;});
+        if(hasTeamResult) return true;
+        // 3. Fallback: match by member names for old rounds with no team data
+        if(selTeamMembers.length){
+          var hasNoTeamData=(r.results||[]).every(function(res){return !res.teamId;});
+          if(hasNoTeamData) return (r.results||[]).some(function(res){return selTeamMembers.indexOf(res.name)>=0;});
+        }
+        return false;
+      });
+    }
     if(!saved.length){wrap.style.display='none';setMode=false;setSelections.clear();return;}
 
     wrap.style.display='block';
