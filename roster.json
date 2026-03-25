@@ -14,5 +14,13 @@
     "team": "Parisi Family",
     "teamId": "team_default",
     "teamColor": "#00e5ff"
+  },
+  {
+    "name": "Test user",
+    "phone": "5551212",
+    "email": "",
+    "team": "Parisi Family",
+    "teamId": "team_default",
+    "teamColor": "#00e5ff"
   }
 ]
