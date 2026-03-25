@@ -937,7 +937,9 @@ function startRound(){
   setupKeys();renderAll();
 }
 function buildActiveOrder(){
-  activeOrder=shooters.map((sh,si)=>{const stn=((sh.startStation-1+rotation-1)%STNS)+1;return {si,stn};}).sort((a,b)=>a.stn-b.stn);
+  // Keep original shooting order (station 1 first, then 2, etc. based on startStation)
+  // Station assignment rotates for scoring, but turn order stays the same
+  activeOrder=shooters.map((sh,si)=>{const stn=((sh.startStation-1+rotation-1)%STNS)+1;return {si,stn};}).sort((a,b)=>shooters[a.si].startStation-shooters[b.si].startStation);
 }
 function curTurn(){return activeOrder[shooterTurnIdx];}
 function curShooter(){return shooters[curTurn().si];}
