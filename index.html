@@ -394,7 +394,8 @@ async function saveReportToGitHub(data){
   try{
     const d=new Date(data.id||Date.now());
     const p=n=>String(n).padStart(2,'0');
-    const fname='round_'
+    const teamPart=data.teamId?data.teamId+'_':'';
+    const fname='round_'+teamPart
       +d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())
       +'_'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds())
       +'_'+(data.id||Date.now())+'.json';
@@ -688,16 +689,15 @@ async function syncTodaysRoundsFromGitHub(){
   try{
     const now=new Date();
     const pad=n=>String(n).padStart(2,'0');
-    const todayPrefix='round_'+now.getFullYear()+pad(now.getMonth()+1)+pad(now.getDate());
-
     // List the reports directory
     const dirRes=await fetch(WORKER_URL+'?path=reports');
     if(!dirRes.ok)return; // silently skip if folder doesn't exist yet
     const dirData=await dirRes.json();
     if(!Array.isArray(dirData))return;
 
-    // Filter to today's files only
-    const todayFiles=dirData.filter(f=>f.type==='file'&&f.name.startsWith(todayPrefix)&&f.name.endsWith('.json'));
+    // Filter to today's round files (handles both round_YYYYMMDD and round_TEAMID_YYYYMMDD formats)
+    const todayDate=now.getFullYear()+pad(now.getMonth()+1)+pad(now.getDate());
+    const todayFiles=dirData.filter(f=>f.type==='file'&&f.name.startsWith('round_')&&f.name.endsWith('.json')&&f.name.includes(todayDate));
     if(!todayFiles.length)return;
 
     // Load existing local rounds to check which IDs we already have
@@ -990,9 +990,14 @@ async function finishRound(){
   roundResults=ranked;
   const hasTie=ranked.some(r=>r.tiedWith.length>0);
   const id=Date.now();
+  // Resolve current team info
+  const activeTeamId=selectedActiveTeam!=='ALL'?selectedActiveTeam:'';
+  const activeTeamName=(function(){try{var t=JSON.parse(localStorage.getItem('clayai_teams')||'[]');var m=t.find(function(x){return x.id===activeTeamId;});return m?m.name:'';}catch(e){return '';}})();
   const data={
     id,
     date:new Date().toLocaleString(),
+    teamId:activeTeamId,
+    teamName:activeTeamName,
     results:ranked.map(r=>({
       rank:r.rank,name:r.name,color:r.color,hits:r.hits,
       pct:Math.round(r.hits/25*100),
@@ -1024,7 +1029,8 @@ async function finishRound(){
 function buildReportURL(data){
   var d=new Date(data.id||Date.now());
   var p=function(n){return String(n).padStart(2,'0');};
-  var fname='round_'
+  var teamPart=data.teamId?data.teamId+'_':'';
+  var fname='round_'+teamPart
     +d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())
     +'_'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds())
     +'_'+(data.id||Date.now())+'.json';
@@ -1441,10 +1447,11 @@ function toggleSetSelection(idx){
   loadSavedRounds();
 }
 
-function reportPathFromId(id){
+function reportPathFromId(id,teamId){
   var d=new Date(id);
   var p=function(n){return String(n).padStart(2,'0');};
-  return 'reports/round_'
+  var teamPart=teamId?teamId+'_':'';
+  return 'reports/round_'+teamPart
     +d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())
     +'_'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds())
     +'_'+id+'.json';
@@ -1456,7 +1463,7 @@ function viewSetReport(){
     const selected=Array.from(setSelections).sort((a,b)=>a-b).map(i=>saved[i]).filter(Boolean);
     if(selected.length<2){alert('Select at least 2 rounds.');return;}
     // Check all rounds have an id to build the path
-    const params=selected.map(r=>'r='+encodeURIComponent(reportPathFromId(r.id))).join('&');
+    const params=selected.map(r=>'r='+encodeURIComponent(reportPathFromId(r.id,r.teamId))).join('&');
     window.open('https://trapshootingai.github.io/TrapAI/setreport.html?'+params,'_blank');
   }catch(e){alert('Could not build set: '+e.message);}
 }
