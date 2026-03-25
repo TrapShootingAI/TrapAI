@@ -1,0 +1,108 @@
+{
+  "id": 1774438203986,
+  "date": "3/25/2026, 7:30:03 AM",
+  "teamId": "team_default",
+  "teamName": "Parisi Family",
+  "results": [
+    {
+      "rank": 1,
+      "name": "Mateo Parisi",
+      "color": "#00e5ff",
+      "hits": 21,
+      "pct": 84,
+      "stationScores": {
+        "1": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "2": [
+          false,
+          true,
+          false,
+          true,
+          false
+        ],
+        "3": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "4": [
+          true,
+          false,
+          true,
+          true,
+          true
+        ],
+        "5": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ]
+      },
+      "tiedWith": [],
+      "phone": "7343043647",
+      "team": "Parisi Family",
+      "teamId": "team_default",
+      "teamColor": "#00e5ff"
+    },
+    {
+      "rank": 2,
+      "name": "Mario Parisi",
+      "color": "#ff6b35",
+      "hits": 18,
+      "pct": 72,
+      "stationScores": {
+        "1": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "2": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "3": [
+          true,
+          true,
+          false,
+          true,
+          false
+        ],
+        "4": [
+          false,
+          false,
+          false,
+          false,
+          true
+        ],
+        "5": [
+          true,
+          false,
+          true,
+          true,
+          true
+        ]
+      },
+      "tiedWith": [],
+      "phone": "7347705969",
+      "team": "Parisi Family",
+      "teamId": "team_default",
+      "teamColor": "#00e5ff"
+    }
+  ],
+  "hasTie": false,
+  "shooterCount": 2
+}
