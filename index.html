@@ -662,6 +662,13 @@ function showSyncing(on){document.getElementById('syncStatus').style.display=on?
 // ── Active team selection ──────────────────────────────────
 function onActiveTeamChange(val){
   selectedActiveTeam=val||'ALL';
+  // Collapse saved rounds drawer when switching teams
+  const drawer=document.getElementById('savedDrawer');
+  const toggleBtn=document.getElementById('savedToggleBtn');
+  if(drawer&&drawer.classList.contains('open')){
+    drawer.classList.remove('open');
+    if(toggleBtn)toggleBtn.classList.remove('open');
+  }
   buildSetup();
 }
 
