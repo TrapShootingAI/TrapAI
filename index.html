@@ -1362,19 +1362,16 @@ function loadSavedRounds(){
     const wrap=document.getElementById('savedToggleWrap');
     if(!allSaved.length){wrap.style.display='none';setMode=false;setSelections.clear();return;}
 
-    // Filter saved rounds by selected team
-    var saved=allSaved;
+    // Filter saved rounds by selected team, keeping original indices
+    var savedWithIdx=allSaved.map(function(r,i){return {round:r,origIdx:i};});
     if(selectedActiveTeam!=='ALL'){
-      // Get selected team's member names for fallback matching
       var selTeamMembers=[];
       try{var tt=JSON.parse(localStorage.getItem('clayai_teams')||'[]');var st=tt.find(function(x){return x.id===selectedActiveTeam;});if(st)selTeamMembers=(st.members||[]).map(function(m){return m.name;});}catch(e){}
-      saved=allSaved.filter(function(r){
-        // 1. Check top-level teamId (new rounds)
+      savedWithIdx=savedWithIdx.filter(function(item){
+        var r=item.round;
         if(r.teamId) return r.teamId===selectedActiveTeam;
-        // 2. Check result-level teamId
         var hasTeamResult=(r.results||[]).some(function(res){return res.teamId===selectedActiveTeam;});
         if(hasTeamResult) return true;
-        // 3. Fallback: match by member names for old rounds with no team data
         if(selTeamMembers.length){
           var hasNoTeamData=(r.results||[]).every(function(res){return !res.teamId;});
           if(hasNoTeamData) return (r.results||[]).some(function(res){return selTeamMembers.indexOf(res.name)>=0;});
@@ -1382,6 +1379,7 @@ function loadSavedRounds(){
         return false;
       });
     }
+    var saved=savedWithIdx.map(function(item){return item.round;});
     if(!saved.length){wrap.style.display='none';setMode=false;setSelections.clear();return;}
 
     wrap.style.display='block';
@@ -1391,7 +1389,7 @@ function loadSavedRounds(){
     const drawer=document.getElementById('savedDrawer');
     const toggleBtn=document.getElementById('savedToggleBtn');
 
-    const rounds=saved.slice(0,10);
+    const rounds=savedWithIdx.slice(0,10);
     let html='';
 
     // Header row with Build Set toggle
@@ -1401,16 +1399,18 @@ function loadSavedRounds(){
       +(setMode?'✕ Cancel':'📋 Build Set')+'</button>'
       +'</div>';
 
-    // Round items
-    html+=rounds.map((r,i)=>{
+    // Round items — use origIdx for view/delete so we reference the correct round in localStorage
+    html+=rounds.map((item,i)=>{
+      const r=item.round;
+      const oi=item.origIdx;
       const top=r.results[0];
       const names=r.results.map(x=>x.name).join(', ');
       const syncLine=r.ghSynced
         ?'<div class="si-sync ok">✓ Synced</div>'
         :'<div class="si-sync pend">○ Local only</div>';
-      const isSel=setSelections.has(i);
+      const isSel=setSelections.has(oi);
       if(setMode){
-        return '<div class="saved-item'+(isSel?' set-selected':'')+'" onclick="toggleSetSelection('+i+')" style="cursor:pointer">'
+        return '<div class="saved-item'+(isSel?' set-selected':'')+'" onclick="toggleSetSelection('+oi+')" style="cursor:pointer">'
           +'<div class="set-check'+(isSel?' on':'')+'">'+( isSel?'✓':'')+'</div>'
           +'<div style="flex:1">'
           +'<div class="si-date">'+r.date+'</div>'
@@ -1421,13 +1421,13 @@ function loadSavedRounds(){
           +'</div>';
       }
       return '<div class="saved-item">'
-        +'<div class="saved-clickable" onclick="viewSavedRound('+i+')">'
+        +'<div class="saved-clickable" onclick="viewSavedRound('+oi+')">'
         +'<div class="si-date">'+r.date+'</div>'
         +'<div class="si-shooters">'+names+'</div>'
         +'<div class="si-score">🥇 '+top.name+': '+top.hits+'/25'+(r.hasTie?' · TIE':'')+'</div>'
         +syncLine
         +'</div>'
-        +'<button class="del-btn" onclick="deleteSavedRound('+i+')" title="Delete">✕</button>'
+        +'<button class="del-btn" onclick="deleteSavedRound('+oi+')" title="Delete">✕</button>'
         +'</div>';
     }).join('');
 
