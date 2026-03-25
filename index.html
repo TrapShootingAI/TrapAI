@@ -1360,17 +1360,9 @@ function loadSavedRounds(){
     wrap.style.display='block';
     document.getElementById('savedBadge').textContent=saved.length;
 
-    // Auto-open drawer if any rounds were saved today
-    const todayStr=new Date().toLocaleDateString();
-    const hasToday=saved.some(r=>{
-      try{return new Date(r.date).toLocaleDateString()===todayStr;}catch(e){return false;}
-    });
+    // Always start minimized — user expands manually
     const drawer=document.getElementById('savedDrawer');
     const toggleBtn=document.getElementById('savedToggleBtn');
-    if(hasToday&&!drawer.classList.contains('open')){
-      drawer.classList.add('open');
-      toggleBtn.classList.add('open');
-    }
 
     const rounds=saved.slice(0,10);
     let html='';

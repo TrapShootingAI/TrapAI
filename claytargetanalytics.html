@@ -182,20 +182,11 @@ header{position:relative;z-index:1;display:flex;align-items:center;justify-conte
   <div class="header-right">
     <span class="hinfo" id="lastRefresh"></span>
     <a href="index.html" class="btn" style="text-decoration:none">← Field Scoring</a>
-    <button class="btn" id="refreshBtn" onclick="init()">↺ Refresh</button>
+    <button class="btn" id="refreshBtn" onclick="refresh()">↺ Refresh</button>
   </div>
 </header>
 
 <div class="page">
-
-  <!-- Team picker (shown first) -->
-  <div id="teamPickerWrap" style="display:none">
-    <div style="text-align:center;padding:40px 20px 20px">
-      <div style="font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:white;letter-spacing:2px;margin-bottom:6px">SELECT A TEAM</div>
-      <div style="font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--dim);margin-bottom:24px">Choose a team to view analytics</div>
-    </div>
-    <div id="teamPickerGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;max-width:700px;margin:0 auto"></div>
-  </div>
 
   <!-- Loading -->
   <div id="loadingWrap" style="display:none">
@@ -207,19 +198,22 @@ header{position:relative;z-index:1;display:flex;align-items:center;justify-conte
   <!-- Error diagnostics -->
   <div id="errorWrap" style="display:none"></div>
 
-  <!-- Main content (hidden until loaded) -->
-  <div id="mainContent" style="display:none">
+  <!-- Team selector bar (always visible once teams loaded) -->
+  <div class="filter-bar" id="teamBar" style="display:none">
+    <span class="filter-label">Team</span>
+    <select class="filter-team-select" id="teamSelect" onchange="onTeamChange(this.value)">
+      <option value="">— Select a Team —</option>
+    </select>
+    <span class="filter-label" style="margin-left:10px">Shooter</span>
+    <select class="shooter-select" id="shooterSelect" onchange="selectShooter(this.value)">
+      <option value="ALL">All Shooters</option>
+    </select>
+    <span class="select-meta" id="selectMeta"></span>
+    <button class="btn" id="rollupBtn" onclick="rollupOldRounds()" style="margin-left:auto;padding:5px 12px;font-size:11px;display:none">📦 Archive Old Rounds</button>
+  </div>
 
-    <!-- Active team banner + shooter filter -->
-    <div class="filter-bar" id="filterBar" style="display:none">
-      <span class="filter-label">Team</span>
-      <span id="activeTeamBanner" style="font-family:'Exo 2',sans-serif;font-size:15px;font-weight:600;color:white;display:flex;align-items:center;gap:8px"></span>
-      <button class="btn" onclick="backToTeamPicker()" style="margin-left:4px;padding:5px 12px;font-size:11px">Change</button>
-      <span class="filter-label" style="margin-left:10px">Shooter</span>
-      <select class="shooter-select" id="shooterSelect" onchange="selectShooter(this.value)"></select>
-      <span class="select-meta" id="selectMeta"></span>
-      <button class="btn" id="rollupBtn" onclick="rollupOldRounds()" style="margin-left:auto;padding:5px 12px;font-size:11px;display:none">📦 Archive Old Rounds</button>
-    </div>
+  <!-- Main content (hidden until team selected + loaded) -->
+  <div id="mainContent" style="display:none">
 
     <!-- Summary strip -->
     <div class="summary-strip" id="summaryStrip"></div>
@@ -233,6 +227,11 @@ header{position:relative;z-index:1;display:flex;align-items:center;justify-conte
     <div class="cards-grid" id="cardsGrid"></div>
 
   </div>
+
+  <!-- Prompt shown before team is selected -->
+  <div id="teamPrompt" style="display:none">
+    <div class="empty-box" style="margin-top:20px">Select a team above to view analytics</div>
+  </div>
 </div>
 
 <script>
@@ -245,14 +244,14 @@ let allTeamStats = {};
 let selectedShooter = 'ALL';
 let selectedTeam = '';
 let registeredTeams = [];
-let teamRoster = {}; // teamId -> { name, members[] }
+let activeTeamObj = null;
 
 // ── Boot ───────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', init);
 
 async function init() {
   document.getElementById('refreshBtn').disabled = true;
-  hide('teamPickerWrap'); hide('errorWrap'); hide('mainContent');
+  hide('errorWrap'); hide('mainContent'); hide('teamPrompt'); hide('teamBar');
 
   // Check for ?report=reports/round_xxx.json — load single report from SMS link
   const params = new URLSearchParams(window.location.search);
@@ -264,7 +263,7 @@ async function init() {
     return;
   }
 
-  // Step 1: Fetch teams list first (lightweight)
+  // Step 1: Fetch teams list (lightweight)
   show('loadingWrap');
   setProgress(0, 'Loading teams...');
   try {
@@ -280,18 +279,14 @@ async function init() {
   if (!registeredTeams.length) {
     show('mainContent');
     document.getElementById('cardsGrid').innerHTML =
-      '<div class="empty-box" style="grid-column:1/-1">📂 No teams found. Create a team in the scoring app first.</div>';
+      '<div class="empty-box" style="grid-column:1/-1">No teams found. Create a team in the scoring app first.</div>';
     return;
   }
 
-  // Build name-to-team lookup for backfilling old rounds
-  teamRoster = {};
-  for (const t of registeredTeams) {
-    teamRoster[t.id] = t;
-  }
-
-  // Show team picker
-  showTeamPicker();
+  // Build team dropdown
+  buildTeamSelect();
+  show('teamBar');
+  show('teamPrompt');
 }
 
 async function fetchTeamsList() {
@@ -303,143 +298,102 @@ async function fetchTeamsList() {
   return Array.isArray(teams) ? teams : [];
 }
 
-function showTeamPicker() {
-  hide('loadingWrap'); hide('mainContent'); hide('errorWrap');
-  show('teamPickerWrap');
-  const grid = document.getElementById('teamPickerGrid');
-  grid.innerHTML = '';
-  for (const t of registeredTeams) {
-    const card = document.createElement('div');
-    card.style.cssText = 'background:var(--card);border:1px solid var(--border);border-radius:10px;padding:24px;cursor:pointer;transition:all 0.2s;text-align:center';
-    card.onmouseover = function(){ card.style.borderColor = t.color || 'var(--accent)'; card.style.boxShadow = '0 0 20px ' + (t.color || 'var(--accent)') + '33'; };
-    card.onmouseout = function(){ card.style.borderColor = 'var(--border)'; card.style.boxShadow = 'none'; };
-    card.onclick = function(){ loadTeamAnalytics(t); };
-    card.innerHTML = '<div style="width:48px;height:48px;border-radius:50%;background:' + (t.color || '#4a6a7a') + ';margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-family:\'Rajdhani\',sans-serif;font-size:22px;font-weight:800;color:#000">' + (t.name || '?').charAt(0) + '</div>'
-      + '<div style="font-family:\'Rajdhani\',sans-serif;font-size:18px;font-weight:700;color:white;letter-spacing:1px;margin-bottom:4px">' + (t.name || 'Unknown') + '</div>'
-      + '<div style="font-family:\'Share Tech Mono\',monospace;font-size:11px;color:var(--dim)">' + (t.members ? t.members.length : 0) + ' members</div>';
-    grid.appendChild(card);
+function refresh() {
+  if (activeTeamObj) {
+    loadTeamAnalytics(activeTeamObj);
+  } else {
+    init();
   }
 }
 
-function backToTeamPicker() {
-  allRounds = []; allShooters = {}; allTeamStats = {};
-  selectedShooter = 'ALL'; selectedTeam = '';
-  hide('mainContent');
-  showTeamPicker();
+function buildTeamSelect() {
+  const sel = document.getElementById('teamSelect');
+  let html = '<option value="">— Select a Team —</option>';
+  for (const t of registeredTeams) {
+    html += '<option value="' + t.id + '">' + t.name + ' (' + (t.members ? t.members.length : 0) + ' members)</option>';
+  }
+  sel.innerHTML = html;
+  if (activeTeamObj) sel.value = activeTeamObj.id;
+}
+
+async function onTeamChange(teamId) {
+  if (!teamId) {
+    allRounds = []; allShooters = {}; allTeamStats = {};
+    selectedShooter = 'ALL'; selectedTeam = ''; activeTeamObj = null;
+    hide('mainContent');
+    show('teamPrompt');
+    document.getElementById('shooterSelect').innerHTML = '<option value="ALL">All Shooters</option>';
+    document.getElementById('selectMeta').textContent = '';
+    document.getElementById('rollupBtn').style.display = 'none';
+    return;
+  }
+  const team = registeredTeams.find(t => t.id === teamId);
+  if (!team) return;
+  await loadTeamAnalytics(team);
 }
 
 async function loadTeamAnalytics(team) {
-  hide('teamPickerWrap'); hide('mainContent');
+  hide('mainContent'); hide('teamPrompt');
   show('loadingWrap');
   document.getElementById('refreshBtn').disabled = true;
 
   selectedTeam = team.name;
+  activeTeamObj = team;
+  const teamMemberNames = (team.members || []).map(m => m.name);
 
-  setProgress(0, 'Loading rounds...');
+  setProgress(0, 'Loading ' + team.name + ' data...');
   try {
-    allRounds = await loadAllReports();
+    allRounds = await loadTeamReports(team);
   } catch(e) {
     showDiagnosticError(e);
     document.getElementById('refreshBtn').disabled = false;
     return;
   }
 
-  // Backfill team info on old rounds that don't have it
-  backfillTeamData(allRounds);
-
-  // Filter rounds to only those involving this team's members
-  const teamMemberNames = (team.members || []).map(m => m.name);
-  const teamRounds = allRounds.filter(r =>
-    (r.results || []).some(res =>
-      (res.teamId === team.id) || (teamMemberNames.includes(res.name))
-    )
-  );
-
   document.getElementById('lastRefresh').textContent =
     'Updated ' + new Date().toLocaleTimeString();
   document.getElementById('refreshBtn').disabled = false;
   hide('loadingWrap');
 
-  if (!teamRounds.length) {
+  if (!allRounds.length) {
     show('mainContent');
-    document.getElementById('filterBar').style.display = 'flex';
-    setActiveTeamBanner(team);
     document.getElementById('cardsGrid').innerHTML =
-      '<div class="empty-box" style="grid-column:1/-1">📂 No rounds found for <strong>' + team.name + '</strong> yet.<br><br>Complete a round in the scoring app and it will appear here.</div>';
+      '<div class="empty-box" style="grid-column:1/-1">No rounds found for <strong>' + team.name + '</strong> yet.<br><br>Complete a round in the scoring app and it will appear here.</div>';
     document.getElementById('leaderboardWrap').innerHTML = '';
     document.getElementById('summaryStrip').innerHTML = '';
+    buildShooterDropdown();
+    showRollupButton(0);
     return;
   }
 
-  allShooters = aggregateShooters(teamRounds);
-  allTeamStats = aggregateTeams(teamRounds);
-
-  // Add the team if not yet in stats
-  if (!allTeamStats[team.name]) {
-    allTeamStats[team.name] = {
-      name: team.name, color: team.color || '#4a6a7a', teamId: team.id || '',
-      rounds: [], members: new Set(teamMemberNames), memberCount: teamMemberNames.length,
-      totalRounds: 0, avgScore: 0, bestMemberAvg: 0, weightedAvg: 0,
-      memberNames: teamMemberNames,
-      memberKeys: teamMemberNames.map(n => n + '||' + (team.id || '')),
-      memberStatsList: []
-    };
-  }
+  allShooters = aggregateShooters(allRounds);
+  allTeamStats = aggregateTeams(allRounds);
 
   selectedShooter = 'ALL';
   buildShooterDropdown();
-  setActiveTeamBanner(team);
-  showRollupButton();
+  showRollupButton(allRounds._individualCount || 0);
   render();
   show('mainContent');
 }
 
-function setActiveTeamBanner(team) {
-  const banner = document.getElementById('activeTeamBanner');
-  banner.innerHTML = '<div class="team-color-dot" style="background:' + (team.color || '#4a6a7a') + '"></div>' + team.name;
+function showRollupButton(individualCount) {
+  const btn = document.getElementById('rollupBtn');
+  btn.style.display = individualCount > 5 ? 'inline-block' : 'none';
 }
 
-function backfillTeamData(rounds) {
-  // Build name → team lookup from registered teams
-  const nameLookup = {};
-  for (const t of registeredTeams) {
-    for (const m of (t.members || [])) {
-      // If same name on multiple teams, store array
-      if (!nameLookup[m.name]) nameLookup[m.name] = [];
-      nameLookup[m.name].push(t);
-    }
-  }
+function backfillTeamData(rounds, team) {
+  // For rounds without team data, assign to the selected team if shooter name matches
+  const memberNames = (team.members || []).map(m => m.name);
   for (const round of rounds) {
     for (const result of (round.results || [])) {
-      if (result.teamId) continue; // already has team data
-      const teams = nameLookup[result.name];
-      if (teams && teams.length === 1) {
-        // Unambiguous match — backfill
-        result.team = teams[0].name;
-        result.teamId = teams[0].id;
-        result.teamColor = teams[0].color;
-      } else if (teams && teams.length > 1) {
-        // Ambiguous (same name on multiple teams) — check if other shooters
-        // in this round share a team, use that as context
-        const otherTeamIds = (round.results || [])
-          .filter(r => r !== result && r.teamId)
-          .map(r => r.teamId);
-        const match = teams.find(t => otherTeamIds.includes(t.id));
-        if (match) {
-          result.team = match.name;
-          result.teamId = match.id;
-          result.teamColor = match.color;
-        }
+      if (result.teamId) continue;
+      if (memberNames.includes(result.name)) {
+        result.team = team.name;
+        result.teamId = team.id;
+        result.teamColor = team.color;
       }
     }
   }
-}
-
-function showRollupButton() {
-  // Show rollup button if there are many individual round files
-  const btn = document.getElementById('rollupBtn');
-  // We show it if there are more than 10 rounds loaded
-  btn.style.display = allRounds.length > 10 ? 'inline-block' : 'none';
 }
 
 // ── Load a single report from ?report= param (SMS deep link) ──
@@ -470,7 +424,7 @@ async function loadSingleReport(path) {
 
     // Hide leaderboard divider for single-round view, show cards only
     show('mainContent');
-    document.getElementById('filterBar').style.display = 'none';
+    document.getElementById('teamBar').style.display = 'none';
     document.getElementById('summaryStrip').innerHTML = buildSingleRoundSummary(data);
     document.getElementById('leaderboardWrap').innerHTML = renderLeaderboard(Object.values(allShooters).sort((a,b)=>b.weightedAvg-a.weightedAvg));
 
@@ -509,9 +463,12 @@ function buildSingleRoundSummary(data) {
   return html;
 }
 
-// ── Data loading ───────────────────────────────────────────
-async function loadAllReports() {
-  // 1. List directory
+// ── Data loading (per-team) ──────────────────────────────────
+async function loadTeamReports(team) {
+  const teamMemberNames = (team.members || []).map(m => m.name);
+  const archiveName = 'team_' + team.id + '.json';
+
+  // 1. List reports/ directory
   setProgress(5, 'Fetching report list...');
   let dirRes;
   try {
@@ -535,9 +492,7 @@ async function loadAllReports() {
   }
 
   const dirData = await dirRes.json();
-
   if (!Array.isArray(dirData)) {
-    // GitHub returned an object — could be an error response or a file
     const msg = dirData.message || 'Unexpected response format';
     throw Object.assign(new Error(msg), { type: 'format', detail: JSON.stringify(dirData).slice(0, 200) });
   }
@@ -546,14 +501,14 @@ async function loadAllReports() {
   if (!allFiles.length) return [];
 
   const rounds = [];
-
-  // 2. Check for archive file first (contains rolled-up old rounds)
-  const archiveFile = allFiles.find(f => f.name === 'archive.json');
   let archivedIds = new Set();
-  if (archiveFile) {
-    setProgress(8, 'Loading archive...');
+
+  // 2. Load per-team archive file if it exists
+  const teamArchive = allFiles.find(f => f.name === archiveName);
+  if (teamArchive) {
+    setProgress(8, 'Loading team archive...');
     try {
-      const res = await fetch(WORKER_URL + '?path=' + encodeURIComponent(archiveFile.path));
+      const res = await fetch(WORKER_URL + '?path=' + encodeURIComponent(teamArchive.path));
       if (res.ok) {
         const json = await res.json();
         if (json.content) {
@@ -567,35 +522,77 @@ async function loadAllReports() {
           }
         }
       }
-    } catch(e) { console.warn('Archive load failed:', e.message); }
+    } catch(e) { console.warn('Team archive load failed:', e.message); }
   }
 
-  // 3. Load individual round files (skip those already in archive)
+  // Also check legacy archive.json
+  const legacyArchive = allFiles.find(f => f.name === 'archive.json');
+  if (legacyArchive) {
+    setProgress(9, 'Checking legacy archive...');
+    try {
+      const res = await fetch(WORKER_URL + '?path=' + encodeURIComponent(legacyArchive.path));
+      if (res.ok) {
+        const json = await res.json();
+        if (json.content) {
+          const archived = JSON.parse(atob(json.content.replace(/\n/g, '')));
+          if (Array.isArray(archived)) {
+            for (const r of archived) {
+              if (r.id && archivedIds.has(String(r.id))) continue;
+              // Only include rounds with this team's members
+              const hasTeamMember = (r.results || []).some(res =>
+                res.teamId === team.id || teamMemberNames.includes(res.name)
+              );
+              if (hasTeamMember) {
+                r._ts = r.id || 0;
+                rounds.push(r);
+                if (r.id) archivedIds.add(String(r.id));
+              }
+            }
+          }
+        }
+      }
+    } catch(e) { console.warn('Legacy archive load failed:', e.message); }
+  }
+
+  // 3. Load individual round files (skip archived, filter to team)
   const roundFiles = allFiles.filter(f => f.name.startsWith('round_') && f.name.endsWith('.json'));
+  let individualCount = 0;
   for (let i = 0; i < roundFiles.length; i++) {
     setProgress(
       10 + Math.round((i / roundFiles.length) * 88),
-      `Loading file ${i + 1} of ${roundFiles.length}…`
+      'Loading file ' + (i + 1) + ' of ' + roundFiles.length + '…'
     );
     try {
-      // Check if this round's ID is already in the archive
       const idMatch = roundFiles[i].name.match(/_(\d+)\.json$/);
       if (idMatch && archivedIds.has(idMatch[1])) continue;
 
       const res = await fetch(WORKER_URL + '?path=' + encodeURIComponent(roundFiles[i].path));
-      if (!res.ok) { console.warn('Skip', roundFiles[i].name, res.status); continue; }
+      if (!res.ok) continue;
       const json = await res.json();
-      if (!json.content) { console.warn('No content', roundFiles[i].name); continue; }
+      if (!json.content) continue;
       const parsed = JSON.parse(atob(json.content.replace(/\n/g, '')));
-      parsed._ts = parsed.id || extractTs(roundFiles[i].name);
       if (parsed.id && archivedIds.has(String(parsed.id))) continue;
+      parsed._ts = parsed.id || extractTs(roundFiles[i].name);
+
+      // Only include rounds with this team's members
+      const hasTeamMember = (parsed.results || []).some(res =>
+        res.teamId === team.id || teamMemberNames.includes(res.name)
+      );
+      if (!hasTeamMember) continue;
+
       rounds.push(parsed);
+      individualCount++;
     } catch(e) {
       console.warn('Parse error', roundFiles[i].name, e.message);
     }
   }
+
+  // Backfill team data on rounds that don't have it
+  backfillTeamData(rounds, team);
+
   setProgress(100, 'Done');
   rounds.sort((a, b) => a._ts - b._ts);
+  rounds._individualCount = individualCount;
   return rounds;
 }
 
@@ -610,9 +607,15 @@ function extractTs(name) {
   return 0;
 }
 
-// ── Rollup old rounds into archive ─────────────────────────
+// ── Rollup old rounds into per-team archive ────────────────
 async function rollupOldRounds() {
-  if (!confirm('This will combine all round files into a single archive.json to speed up loading. Continue?')) return;
+  if (!activeTeamObj) { alert('Select a team first.'); return; }
+  const team = activeTeamObj;
+  const archiveName = 'team_' + team.id + '.json';
+  const teamMemberNames = (team.members || []).map(m => m.name);
+  const cutoff = Date.now() - (3 * 86400000); // older than 3 days
+
+  if (!confirm('Archive old rounds for ' + team.name + ' into ' + archiveName + '?\nRounds older than 3 days will be consolidated.')) return;
 
   const btn = document.getElementById('rollupBtn');
   btn.disabled = true;
@@ -625,12 +628,9 @@ async function rollupOldRounds() {
     const dirData = await dirRes.json();
     if (!Array.isArray(dirData)) throw new Error('Unexpected format');
 
-    const roundFiles = dirData.filter(f => f.type === 'file' && f.name.startsWith('round_') && f.name.endsWith('.json'));
-    if (!roundFiles.length) { alert('No round files to archive.'); return; }
-
-    // 2. Load existing archive if any
+    // 2. Load existing team archive if any
     let existingArchive = [];
-    const archiveFile = dirData.find(f => f.name === 'archive.json');
+    const archiveFile = dirData.find(f => f.name === archiveName);
     if (archiveFile) {
       const res = await fetch(WORKER_URL + '?path=' + encodeURIComponent(archiveFile.path));
       if (res.ok) {
@@ -643,51 +643,81 @@ async function rollupOldRounds() {
     }
     const existingIds = new Set(existingArchive.map(r => String(r.id)));
 
-    // 3. Load each round file and add to archive
+    // 3. Load old round files that belong to this team
+    const roundFiles = dirData.filter(f => f.type === 'file' && f.name.startsWith('round_') && f.name.endsWith('.json'));
     let added = 0;
+    const filesToDelete = [];
+
     for (const file of roundFiles) {
       try {
+        // Check if this round is old enough via filename timestamp
+        const ts = extractTs(file.name);
+        if (ts > cutoff) continue; // too recent, skip
+
+        const idMatch = file.name.match(/_(\d+)\.json$/);
+        if (idMatch && existingIds.has(idMatch[1])) {
+          filesToDelete.push(file); // already archived, can delete
+          continue;
+        }
+
         const res = await fetch(WORKER_URL + '?path=' + encodeURIComponent(file.path));
         if (!res.ok) continue;
         const json = await res.json();
         if (!json.content) continue;
         const parsed = JSON.parse(atob(json.content.replace(/\n/g, '')));
-        if (parsed.id && existingIds.has(String(parsed.id))) continue;
-        // Remove _ts before archiving
+        if (parsed.id && existingIds.has(String(parsed.id))) {
+          filesToDelete.push(file);
+          continue;
+        }
+
+        // Does this round involve this team's members?
+        const hasTeamMember = (parsed.results || []).some(res =>
+          res.teamId === team.id || teamMemberNames.includes(res.name)
+        );
+        if (!hasTeamMember) continue;
+
+        // Backfill team data before archiving
+        for (const result of (parsed.results || [])) {
+          if (!result.teamId && teamMemberNames.includes(result.name)) {
+            result.team = team.name;
+            result.teamId = team.id;
+            result.teamColor = team.color;
+          }
+        }
+
         delete parsed._ts;
         existingArchive.push(parsed);
         existingIds.add(String(parsed.id));
+        filesToDelete.push(file);
         added++;
       } catch(e) { console.warn('Skip', file.name, e.message); }
     }
 
-    if (!added && roundFiles.length === 0) {
-      alert('Nothing new to archive.');
+    if (!added && !filesToDelete.length) {
+      alert('No old rounds to archive for this team.');
       return;
     }
 
-    // 4. Sort archive by id
+    // 4. Sort and write team archive
     existingArchive.sort((a, b) => (a.id || 0) - (b.id || 0));
-
-    // 5. Write archive.json
     const archiveContent = btoa(JSON.stringify(existingArchive));
-    const putRes = await fetch(WORKER_URL + '?path=reports/archive.json', {
+    const putRes = await fetch(WORKER_URL + '?path=reports/' + archiveName, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content: archiveContent })
     });
-    if (!putRes.ok) throw new Error('Failed to write archive.json');
+    if (!putRes.ok) throw new Error('Failed to write ' + archiveName);
 
-    // 6. Delete individual round files
+    // 5. Delete archived individual round files
     let deleted = 0;
-    for (const file of roundFiles) {
+    for (const file of filesToDelete) {
       try {
         const delRes = await fetch(WORKER_URL + '?path=' + encodeURIComponent(file.path), { method: 'DELETE' });
         if (delRes.ok) deleted++;
       } catch(e) { console.warn('Could not delete', file.name); }
     }
 
-    alert('Archived ' + existingArchive.length + ' rounds into archive.json. Deleted ' + deleted + ' individual files.');
+    alert('Archived ' + existingArchive.length + ' rounds for ' + team.name + '. Removed ' + deleted + ' old files.');
     btn.style.display = 'none';
   } catch(e) {
     alert('Rollup failed: ' + e.message);
@@ -699,7 +729,7 @@ async function rollupOldRounds() {
 
 // ── Error display ──────────────────────────────────────────
 function showDiagnosticError(e) {
-  hide('loadingWrap'); hide('teamPickerWrap');
+  hide('loadingWrap'); hide('teamPrompt');
   show('errorWrap');
 
   const type = e.type || 'unknown';
@@ -865,13 +895,9 @@ function aggregateTeams(rounds) {
 
 // ── Shooter dropdown ───────────────────────────────────────
 function buildShooterDropdown() {
-  const bar = document.getElementById('filterBar');
   const sel = document.getElementById('shooterSelect');
   let shooters = Object.values(allShooters)
     .sort((a, b) => b.weightedAvg - a.weightedAvg);
-
-  if (!shooters.length) { bar.style.display = 'none'; return; }
-  bar.style.display = 'flex';
 
   let html = `<option value="ALL">👥 All Shooters</option>`;
   for (const s of shooters) {
