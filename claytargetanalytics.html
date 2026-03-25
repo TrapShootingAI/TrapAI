@@ -473,10 +473,13 @@ function buildSingleRoundSummary(data) {
   return html;
 }
 
+function sanitizeTeamName(name){return (name||'').replace(/[^a-zA-Z0-9]/g,'');}
+
 // ── Data loading (per-team) ──────────────────────────────────
 async function loadTeamReports(team) {
   const teamMemberNames = (team.members || []).map(m => m.name);
-  const archiveName = 'team_' + team.id + '.json';
+  const teamSlug = sanitizeTeamName(team.name);
+  const archiveName = teamSlug + '.json';
 
   // 1. List reports/ directory
   setProgress(5, 'Fetching report list...');
@@ -513,8 +516,9 @@ async function loadTeamReports(team) {
   const rounds = [];
   let archivedIds = new Set();
 
-  // 2. Load per-team archive file if it exists
-  const teamArchive = allFiles.find(f => f.name === archiveName);
+  // 2. Load per-team archive file if it exists (check new name, fallback to legacy)
+  const legacyArchiveName = 'team_' + team.id + '.json';
+  const teamArchive = allFiles.find(f => f.name === archiveName) || allFiles.find(f => f.name === legacyArchiveName);
   if (teamArchive) {
     setProgress(8, 'Loading team archive...');
     try {
@@ -567,10 +571,10 @@ async function loadTeamReports(team) {
   // 3. Load individual round files (skip archived, filter to team)
   const roundFiles = allFiles.filter(f => f.name.startsWith('round_') && f.name.endsWith('.json'));
 
-  // Separate files that have this team's ID in the filename vs legacy (no team) vs other-team
-  const teamPrefix = 'round_' + team.id + '_';
-  const teamFiles = [];   // Files with this team's ID in filename — always load
-  const legacyFiles = []; // Files without any team ID — must open to check
+  // Separate files that have this team's name in the filename vs legacy (no team) vs other-team
+  const teamPrefix = 'round_' + teamSlug + '_';
+  const teamFiles = [];   // Files with this team's name in filename — always load
+  const legacyFiles = []; // Files without any team name — must open to check
   for (const f of roundFiles) {
     const afterRound = f.name.slice(6); // after "round_"
     if (f.name.startsWith(teamPrefix)) {
@@ -641,7 +645,8 @@ function extractTs(name) {
 async function rollupOldRounds() {
   if (!activeTeamObj) { alert('Select a team first.'); return; }
   const team = activeTeamObj;
-  const archiveName = 'team_' + team.id + '.json';
+  const teamSlug = sanitizeTeamName(team.name);
+  const archiveName = teamSlug + '.json';
   const teamMemberNames = (team.members || []).map(m => m.name);
   const cutoff = Date.now() - (3 * 86400000); // older than 3 days
 
@@ -675,7 +680,7 @@ async function rollupOldRounds() {
 
     // 3. Load old round files that belong to this team
     const roundFiles = dirData.filter(f => f.type === 'file' && f.name.startsWith('round_') && f.name.endsWith('.json'));
-    const teamPrefix = 'round_' + team.id + '_';
+    const teamPrefix = 'round_' + teamSlug + '_';
     let added = 0;
     const filesToDelete = [];
 

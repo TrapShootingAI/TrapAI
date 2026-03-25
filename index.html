@@ -386,15 +386,19 @@ let selectedTeamColor='#00e5ff';
 // ── Cloudflare Worker ─────────────────────────────────────
 const WORKER_URL='https://clayai-roster.mario-parisi.workers.dev';
 
+// ── Helpers ──────────────────────────────────────────────
+function sanitizeTeamName(name){return (name||'').replace(/[^a-zA-Z0-9]/g,'');}
+
 // ── GitHub Report Push ────────────────────────────────────
-// Sends each finished round as reports/round_YYYYMMDD_HHMMSS_<id>.json
+// Sends each finished round as reports/round_<TeamName>_YYYYMMDD_HHMMSS_<id>.json
 // The worker must support ?path=reports/xxx.json on PUT requests.
 // See the update instructions in the HTML comment at the bottom.
 async function saveReportToGitHub(data){
   try{
     const d=new Date(data.id||Date.now());
     const p=n=>String(n).padStart(2,'0');
-    const teamPart=data.teamId?data.teamId+'_':'';
+    const teamSlug=sanitizeTeamName(data.teamName);
+    const teamPart=teamSlug?teamSlug+'_':'';
     const fname='round_'+teamPart
       +d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())
       +'_'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds())
@@ -1029,7 +1033,8 @@ async function finishRound(){
 function buildReportURL(data){
   var d=new Date(data.id||Date.now());
   var p=function(n){return String(n).padStart(2,'0');};
-  var teamPart=data.teamId?data.teamId+'_':'';
+  var teamSlug=sanitizeTeamName(data.teamName);
+  var teamPart=teamSlug?teamSlug+'_':'';
   var fname='round_'+teamPart
     +d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())
     +'_'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds())
@@ -1447,10 +1452,11 @@ function toggleSetSelection(idx){
   loadSavedRounds();
 }
 
-function reportPathFromId(id,teamId){
+function reportPathFromId(id,teamName){
   var d=new Date(id);
   var p=function(n){return String(n).padStart(2,'0');};
-  var teamPart=teamId?teamId+'_':'';
+  var teamSlug=sanitizeTeamName(teamName);
+  var teamPart=teamSlug?teamSlug+'_':'';
   return 'reports/round_'+teamPart
     +d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())
     +'_'+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds())
@@ -1463,7 +1469,7 @@ function viewSetReport(){
     const selected=Array.from(setSelections).sort((a,b)=>a-b).map(i=>saved[i]).filter(Boolean);
     if(selected.length<2){alert('Select at least 2 rounds.');return;}
     // Check all rounds have an id to build the path
-    const params=selected.map(r=>'r='+encodeURIComponent(reportPathFromId(r.id,r.teamId))).join('&');
+    const params=selected.map(r=>'r='+encodeURIComponent(reportPathFromId(r.id,r.teamName))).join('&');
     window.open('https://trapshootingai.github.io/TrapAI/setreport.html?'+params,'_blank');
   }catch(e){alert('Could not build set: '+e.message);}
 }
