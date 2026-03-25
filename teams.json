@@ -20,6 +20,12 @@
     "id": "team_1774396719365",
     "name": "Grosse Ile",
     "color": "#e91e63",
-    "members": []
+    "members": [
+      {
+        "name": "Mateo Parisi",
+        "phone": "7343043647",
+        "email": ""
+      }
+    ]
   }
 ]
