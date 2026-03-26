@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>ClayTarget — Manual Score Entry</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;800&display=swap');
+
+:root {
+  --bg:#080c10; --panel:#0d1520; --border:#1a2a3a;
+  --accent:#00e5ff; --hit:#00ff88; --miss:#ff3355;
+  --gold:#ffd700; --warn:#ff8c00; --text:#c8dde8; --dim:#4a6a7a;
+  --card:#0b1825;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{overflow-x:hidden}
+body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,229,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,0.02) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+
+header{position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:var(--panel);border-bottom:2px solid var(--accent);flex-wrap:wrap;gap:10px}
+.logo{display:flex;align-items:center;gap:12px}
+.logo-icon{width:42px;height:42px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 0 20px rgba(0,229,255,0.5)}
+.logo h1{font-family:'Rajdhani',sans-serif;font-size:24px;font-weight:700;color:white;letter-spacing:2px}
+.logo-sub{font-size:11px;color:var(--accent);letter-spacing:3px;font-family:'Share Tech Mono',monospace}
+.header-right{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.btn{padding:8px 16px;border:1px solid var(--accent);background:transparent;color:var(--accent);font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;border-radius:3px;transition:all 0.2s;text-decoration:none}
+.btn:hover{background:rgba(0,229,255,0.1)}
+.btn.primary{background:var(--accent);color:#000}
+.btn.primary:hover{box-shadow:0 0 20px rgba(0,229,255,0.4)}
+
+.page{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:16px}
+
+/* Setup panel */
+.setup-panel{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:20px;margin-bottom:16px}
+.panel-title{font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;letter-spacing:4px;text-transform:uppercase;color:var(--accent);border-left:4px solid var(--accent);padding-left:12px;margin-bottom:16px}
+
+/* Selects */
+.field-select{appearance:none;-webkit-appearance:none;background:rgba(0,0,0,0.4);border:1px solid var(--accent);border-radius:6px;padding:10px 40px 10px 14px;color:white;font-family:'Exo 2',sans-serif;font-size:15px;font-weight:600;cursor:pointer;outline:none;min-width:220px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2300e5ff' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;transition:border-color 0.2s}
+.field-select:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(0,229,255,0.15)}
+.field-select option{background:#0d1520;color:white}
+
+.field-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.field-label{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--dim);letter-spacing:2px;text-transform:uppercase;min-width:60px}
+.field-input{background:rgba(0,0,0,0.4);border:1px solid var(--border);border-radius:6px;padding:10px 14px;color:white;font-family:'Exo 2',sans-serif;font-size:14px;outline:none;transition:border-color 0.2s}
+.field-input:focus{border-color:var(--accent)}
+
+/* Shooter rows */
+.shooter-entry{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px}
+.shooter-header{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.2);cursor:pointer;user-select:none}
+.shooter-header:hover{background:rgba(0,229,255,0.03)}
+.shooter-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:#000;flex-shrink:0}
+.shooter-name{font-family:'Exo 2',sans-serif;font-weight:600;color:white;font-size:15px;flex:1}
+.shooter-score{font-family:'Share Tech Mono',monospace;font-size:18px;font-weight:700;color:var(--accent)}
+.shooter-pct{font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--dim);margin-left:4px}
+.expand-arrow{color:var(--dim);font-size:12px;transition:transform 0.2s}
+.shooter-entry.expanded .expand-arrow{transform:rotate(180deg)}
+
+.shooter-body{display:none;padding:14px 16px}
+.shooter-entry.expanded .shooter-body{display:block}
+
+/* Scorecard grid */
+.station-label{font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:8px;margin-top:12px}
+.station-label:first-child{margin-top:0}
+.shot-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:4px}
+.shot-cell{position:relative;width:100%;aspect-ratio:1;border-radius:8px;border:2px solid var(--border);background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.15s;font-size:20px;font-weight:700;user-select:none;-webkit-tap-highlight-color:transparent}
+.shot-cell:hover{border-color:rgba(0,229,255,0.4)}
+.shot-cell.hit{border-color:var(--hit);background:rgba(0,255,136,0.08);color:var(--hit)}
+.shot-cell.miss{border-color:var(--miss);background:rgba(255,51,85,0.08);color:var(--miss)}
+.shot-cell .shot-num{position:absolute;top:2px;left:5px;font-size:9px;color:var(--dim);font-family:'Share Tech Mono',monospace;font-weight:400}
+.shot-cell .miss-dir{font-size:10px;margin-top:14px;color:var(--miss);font-family:'Share Tech Mono',monospace;opacity:0.8}
+
+/* Direction picker overlay */
+.dir-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center}
+.dir-overlay.active{display:flex}
+.dir-picker{background:var(--panel);border:2px solid var(--miss);border-radius:16px;padding:24px;width:260px;text-align:center}
+.dir-title{font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--miss);margin-bottom:16px}
+.dir-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.dir-btn{width:100%;aspect-ratio:1;border-radius:50%;border:2px solid var(--border);background:rgba(255,51,85,0.05);color:var(--text);font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s}
+.dir-btn:hover{border-color:var(--miss);background:rgba(255,51,85,0.15);transform:scale(1.1)}
+.dir-btn.center{border:none;background:none;cursor:default;font-size:28px}
+.dir-btn.center:hover{transform:none}
+.dir-label{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--dim);margin-bottom:4px}
+.dir-cancel{padding:8px 20px;border:1px solid var(--border);background:transparent;color:var(--dim);font-family:'Rajdhani',sans-serif;font-size:13px;cursor:pointer;border-radius:4px;transition:all 0.2s}
+.dir-cancel:hover{border-color:var(--text);color:var(--text)}
+
+/* Photo upload */
+.upload-area{border:2px dashed var(--border);border-radius:10px;padding:24px;text-align:center;cursor:pointer;transition:all 0.2s;margin-bottom:14px}
+.upload-area:hover{border-color:var(--accent);background:rgba(0,229,255,0.02)}
+.upload-area.has-photo{border-style:solid;border-color:var(--accent)}
+.upload-icon{font-size:32px;margin-bottom:8px}
+.upload-text{font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--dim)}
+.upload-preview{max-width:100%;max-height:200px;border-radius:6px;margin-top:10px}
+
+/* Submit bar */
+.submit-bar{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:16px}
+.submit-summary{flex:1;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--dim)}
+.submit-summary strong{color:var(--accent)}
+.save-btn{padding:12px 28px;background:var(--accent);color:#000;border:none;border-radius:6px;font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;letter-spacing:2px;cursor:pointer;transition:all 0.2s;text-transform:uppercase}
+.save-btn:hover{box-shadow:0 0 24px rgba(0,229,255,0.5)}
+.save-btn:disabled{opacity:0.3;cursor:default;box-shadow:none}
+
+/* Syncing indicator */
+.sync-status{display:none;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--accent);padding:6px 14px;background:rgba(0,229,255,0.05);border:1px solid rgba(0,229,255,0.2);border-radius:4px}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--hit);color:#000;padding:12px 24px;border-radius:8px;font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;letter-spacing:1px;z-index:2000;display:none;box-shadow:0 4px 20px rgba(0,255,136,0.3)}
+
+@media(max-width:600px){
+  .page{padding:10px}
+  header{padding:12px 14px}
+  .shot-grid{gap:4px}
+  .shot-cell{font-size:16px}
+  .dir-picker{width:220px;padding:16px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🎯</div>
+    <div>
+      <h1>MANUAL ENTRY</h1>
+      <span class="logo-sub">SCORECARD INPUT</span>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="sync-status" id="syncStatus">⟳ Syncing...</span>
+    <a href="index.html" class="btn">← Back</a>
+  </div>
+</header>
+
+<div class="page">
+
+  <!-- Step 1: Team & Round Info -->
+  <div class="setup-panel" id="setupPanel">
+    <div class="panel-title">Round Info</div>
+    <div class="field-row">
+      <span class="field-label">Team</span>
+      <select class="field-select" id="teamSelect" onchange="onTeamSelect(this.value)">
+        <option value="">— Select Team —</option>
+      </select>
+    </div>
+    <div class="field-row">
+      <span class="field-label">Date</span>
+      <input type="date" class="field-input" id="roundDate" style="color-scheme:dark">
+    </div>
+    <div class="field-row">
+      <span class="field-label">Event</span>
+      <input type="text" class="field-input" id="eventName" placeholder="e.g. Week 3, Practice" style="min-width:220px">
+    </div>
+
+    <!-- Photo upload -->
+    <div class="panel-title" style="margin-top:20px">Scorecard Photo (optional)</div>
+    <div class="upload-area" id="uploadArea" onclick="document.getElementById('photoInput').click()">
+      <div class="upload-icon">📷</div>
+      <div class="upload-text">Tap to upload scorecard photo</div>
+      <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(this)">
+    </div>
+  </div>
+
+  <!-- Shooter list (populated after team select) -->
+  <div id="shooterList"></div>
+
+  <!-- Add shooter button -->
+  <div id="addShooterWrap" style="display:none;margin-bottom:12px">
+    <button class="btn" onclick="addShooterRow()" style="width:100%;padding:10px">+ Add Shooter</button>
+  </div>
+
+  <!-- Submit bar -->
+  <div class="submit-bar" id="submitBar" style="display:none">
+    <div class="submit-summary" id="submitSummary"></div>
+    <button class="save-btn" id="saveBtn" onclick="saveRound()">Save Round</button>
+  </div>
+
+</div>
+
+<!-- Direction picker modal -->
+<div class="dir-overlay" id="dirOverlay">
+  <div class="dir-picker">
+    <div class="dir-title">Miss Direction</div>
+    <div class="dir-label">Which way did the target go?</div>
+    <div class="dir-grid">
+      <button class="dir-btn" onclick="pickDir('↖','UL')" title="Up-Left">↖</button>
+      <button class="dir-btn" onclick="pickDir('↑','U')" title="Up">↑</button>
+      <button class="dir-btn" onclick="pickDir('↗','UR')" title="Up-Right">↗</button>
+      <button class="dir-btn" onclick="pickDir('←','L')" title="Left">←</button>
+      <button class="dir-btn center">○</button>
+      <button class="dir-btn" onclick="pickDir('→','R')" title="Right">→</button>
+      <button class="dir-btn" onclick="pickDir('↙','DL')" title="Down-Left">↙</button>
+      <button class="dir-btn" onclick="pickDir('↓','D')" title="Down">↓</button>
+      <button class="dir-btn" onclick="pickDir('↘','DR')" title="Down-Right">↘</button>
+    </div>
+    <button class="dir-cancel" onclick="cancelDir()">Cancel</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+const WORKER_URL = 'https://clayai-roster.mario-parisi.workers.dev';
+const COLORS = ['#ff6b35','#ffd700','#00e5ff','#ff3355','#00ff88'];
+
+let registeredTeams = [];
+let activeTeam = null;
+let shooterRows = []; // [{name, memberId, scores: [{hit:bool, missDir:string|null},...] }]
+let pendingDirCell = null; // {shooterIdx, shotIdx}
+let uploadedPhoto = null; // base64 data URL
+
+// ── Boot ──
+window.addEventListener('DOMContentLoaded', init);
+
+async function init() {
+  document.getElementById('roundDate').value = new Date().toISOString().split('T')[0];
+  try {
+    const res = await fetch(WORKER_URL + '?path=teams.json');
+    if (res.ok) {
+      const json = await res.json();
+      if (json.content) {
+        registeredTeams = JSON.parse(atob(json.content.replace(/\n/g, '')));
+      }
+    }
+  } catch(e) { console.warn('Could not load teams:', e.message); }
+
+  const sel = document.getElementById('teamSelect');
+  for (const t of registeredTeams) {
+    sel.innerHTML += '<option value="' + t.id + '">' + t.name + ' (' + (t.members||[]).length + ' members)</option>';
+  }
+
+  // Auto-select from URL param
+  const params = new URLSearchParams(window.location.search);
+  const teamParam = params.get('team');
+  if (teamParam) {
+    sel.value = teamParam;
+    onTeamSelect(teamParam);
+  }
+}
+
+function onTeamSelect(teamId) {
+  activeTeam = registeredTeams.find(t => t.id === teamId) || null;
+  shooterRows = [];
+  if (!activeTeam) {
+    document.getElementById('shooterList').innerHTML = '';
+    document.getElementById('addShooterWrap').style.display = 'none';
+    document.getElementById('submitBar').style.display = 'none';
+    return;
+  }
+
+  // Create a row per team member
+  (activeTeam.members || []).forEach(m => {
+    shooterRows.push({
+      name: m.name,
+      phone: m.phone || '',
+      scores: new Array(25).fill(null) // null=unmarked, {hit:true} or {hit:false,dir:'U'}
+    });
+  });
+
+  renderShooters();
+  document.getElementById('addShooterWrap').style.display = 'block';
+  updateSubmitBar();
+}
+
+function addShooterRow() {
+  const name = prompt('Shooter name:');
+  if (!name || !name.trim()) return;
+  shooterRows.push({
+    name: name.trim(),
+    phone: '',
+    scores: new Array(25).fill(null)
+  });
+  renderShooters();
+  updateSubmitBar();
+}
+
+function removeShooter(idx) {
+  if (!confirm('Remove ' + shooterRows[idx].name + '?')) return;
+  shooterRows.splice(idx, 1);
+  renderShooters();
+  updateSubmitBar();
+}
+
+// ── Render ──
+function renderShooters() {
+  const list = document.getElementById('shooterList');
+  list.innerHTML = shooterRows.map((s, si) => {
+    const hits = s.scores.filter(x => x && x.hit).length;
+    const marked = s.scores.filter(x => x !== null).length;
+    const pct = marked > 0 ? Math.round(hits / marked * 100) : 0;
+    const color = COLORS[si % COLORS.length];
+    const expanded = true; // start expanded
+
+    let body = '';
+    for (let stn = 0; stn < 5; stn++) {
+      body += '<div class="station-label">Station ' + (stn + 1) + '</div>';
+      body += '<div class="shot-grid">';
+      for (let shot = 0; shot < 5; shot++) {
+        const idx = stn * 5 + shot;
+        const sc = s.scores[idx];
+        let cls = 'shot-cell';
+        let content = '';
+        if (sc && sc.hit) {
+          cls += ' hit';
+          content = '/';
+        } else if (sc && !sc.hit) {
+          cls += ' miss';
+          const arrow = dirArrow(sc.dir);
+          content = '○<span class="miss-dir">' + arrow + '</span>';
+        }
+        body += '<div class="' + cls + '" onclick="tapShot(' + si + ',' + idx + ')">'
+          + '<span class="shot-num">' + (idx + 1) + '</span>'
+          + content
+          + '</div>';
+      }
+      body += '</div>';
+    }
+
+    return '<div class="shooter-entry' + (expanded ? ' expanded' : '') + '" id="se_' + si + '">'
+      + '<div class="shooter-header" onclick="toggleShooter(' + si + ')">'
+      + '<div class="shooter-avatar" style="background:' + color + '">' + s.name.charAt(0) + '</div>'
+      + '<div class="shooter-name">' + s.name + '</div>'
+      + '<div class="shooter-score">' + hits + '/25</div>'
+      + '<div class="shooter-pct">(' + pct + '%)</div>'
+      + '<button class="btn" onclick="event.stopPropagation();removeShooter(' + si + ')" style="padding:3px 8px;font-size:11px;color:var(--miss);border-color:var(--miss)">✕</button>'
+      + '<span class="expand-arrow">▼</span>'
+      + '</div>'
+      + '<div class="shooter-body">' + body + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+function dirArrow(dir) {
+  const map = {U:'↑',D:'↓',L:'←',R:'→',UL:'↖',UR:'↗',DL:'↙',DR:'↘'};
+  return map[dir] || dir || '';
+}
+
+function toggleShooter(si) {
+  document.getElementById('se_' + si).classList.toggle('expanded');
+}
+
+// ── Shot input ──
+function tapShot(si, shotIdx) {
+  const current = shooterRows[si].scores[shotIdx];
+
+  if (current === null) {
+    // First tap: mark as hit
+    shooterRows[si].scores[shotIdx] = { hit: true };
+    renderShooters();
+    updateSubmitBar();
+  } else if (current.hit) {
+    // Second tap: switch to miss — show direction picker
+    pendingDirCell = { si, shotIdx };
+    document.getElementById('dirOverlay').classList.add('active');
+  } else {
+    // Third tap: clear back to unmarked
+    shooterRows[si].scores[shotIdx] = null;
+    renderShooters();
+    updateSubmitBar();
+  }
+}
+
+function pickDir(arrow, code) {
+  if (!pendingDirCell) return;
+  const { si, shotIdx } = pendingDirCell;
+  shooterRows[si].scores[shotIdx] = { hit: false, dir: code };
+  pendingDirCell = null;
+  document.getElementById('dirOverlay').classList.remove('active');
+  renderShooters();
+  updateSubmitBar();
+}
+
+function cancelDir() {
+  // Cancel miss — keep as hit
+  pendingDirCell = null;
+  document.getElementById('dirOverlay').classList.remove('active');
+}
+
+// ── Photo ──
+function handlePhoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    uploadedPhoto = e.target.result;
+    const area = document.getElementById('uploadArea');
+    area.classList.add('has-photo');
+    area.innerHTML = '<img class="upload-preview" src="' + uploadedPhoto + '">'
+      + '<div class="upload-text" style="margin-top:8px">Tap to change photo</div>'
+      + '<input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(this)">';
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── Submit ──
+function updateSubmitBar() {
+  const bar = document.getElementById('submitBar');
+  if (!shooterRows.length) { bar.style.display = 'none'; return; }
+  bar.style.display = 'flex';
+
+  let totalHits = 0, totalMarked = 0, totalShots = 0;
+  shooterRows.forEach(s => {
+    s.scores.forEach(sc => {
+      totalShots++;
+      if (sc !== null) {
+        totalMarked++;
+        if (sc.hit) totalHits++;
+      }
+    });
+  });
+
+  document.getElementById('submitSummary').innerHTML =
+    '<strong>' + shooterRows.length + '</strong> shooters · ' +
+    '<strong>' + totalMarked + '/' + totalShots + '</strong> shots marked · ' +
+    '<strong>' + totalHits + '</strong> hits';
+
+  document.getElementById('saveBtn').disabled = totalMarked === 0;
+}
+
+function sanitizeTeamName(name) { return (name || '').replace(/[^a-zA-Z0-9]/g, ''); }
+
+async function saveRound() {
+  if (!activeTeam) { alert('Select a team first.'); return; }
+
+  const btn = document.getElementById('saveBtn');
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+
+  const id = Date.now();
+  const roundDate = document.getElementById('roundDate').value;
+  const eventName = document.getElementById('eventName').value.trim();
+
+  // Build results in the same format as the live scoring app
+  const results = shooterRows.map((s, si) => {
+    const stationScores = {};
+    for (let stn = 1; stn <= 5; stn++) {
+      stationScores[stn] = [];
+      for (let shot = 0; shot < 5; shot++) {
+        const sc = s.scores[(stn - 1) * 5 + shot];
+        stationScores[stn].push(sc ? sc.hit : false);
+      }
+    }
+
+    const hits = s.scores.filter(x => x && x.hit).length;
+
+    // Build miss direction map: shotIndex -> direction code
+    const missDirections = {};
+    s.scores.forEach((sc, idx) => {
+      if (sc && !sc.hit && sc.dir) {
+        missDirections[idx + 1] = sc.dir; // 1-indexed
+      }
+    });
+
+    return {
+      rank: 0, // computed below
+      name: s.name,
+      color: COLORS[si % COLORS.length],
+      hits: hits,
+      pct: Math.round(hits / 25 * 100),
+      stationScores: stationScores,
+      missDirections: missDirections,
+      tiedWith: [],
+      phone: s.phone || '',
+      team: activeTeam.name,
+      teamId: activeTeam.id,
+      teamColor: activeTeam.color
+    };
+  });
+
+  // Assign ranks
+  results.sort((a, b) => b.hits - a.hits);
+  let rank = 1;
+  results.forEach((r, i) => {
+    if (i > 0 && r.hits < results[i - 1].hits) rank = i + 1;
+    r.rank = rank;
+    r.tiedWith = results.filter((x, j) => j !== i && x.hits === r.hits).map(x => x.name);
+  });
+
+  const hasTie = results.some(r => r.tiedWith.length > 0);
+
+  const data = {
+    id: id,
+    date: roundDate ? new Date(roundDate + 'T12:00:00').toLocaleString() : new Date().toLocaleString(),
+    teamId: activeTeam.id,
+    teamName: activeTeam.name,
+    manualEntry: true,
+    eventName: eventName || undefined,
+    results: results,
+    hasTie: hasTie,
+    shooterCount: results.length
+  };
+
+  // Save to GitHub
+  const syncEl = document.getElementById('syncStatus');
+  syncEl.style.display = 'block';
+
+  try {
+    const d = new Date(id);
+    const p = n => String(n).padStart(2, '0');
+    const teamSlug = sanitizeTeamName(activeTeam.name);
+    const teamPart = teamSlug ? teamSlug + '_' : '';
+    const fname = 'round_' + teamPart
+      + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate())
+      + '_' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds())
+      + '_' + id + '.json';
+
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
+    const res = await fetch(WORKER_URL + '?path=reports/' + fname, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: 'Add manual round report ' + fname, content: content })
+    });
+
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+
+    // Upload photo if present
+    if (uploadedPhoto) {
+      const photoFname = 'scorecard_' + teamPart + id + '.jpg';
+      // Strip data URL prefix to get raw base64
+      const photoBase64 = uploadedPhoto.split(',')[1];
+      await fetch(WORKER_URL + '?path=reports/' + photoFname, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'Add scorecard photo ' + photoFname, content: photoBase64 })
+      }).catch(e => console.warn('Photo upload failed:', e.message));
+    }
+
+    syncEl.style.display = 'none';
+    showToast('Round saved successfully!');
+
+    // Reset for next round
+    shooterRows.forEach(s => s.scores.fill(null));
+    uploadedPhoto = null;
+    document.getElementById('uploadArea').classList.remove('has-photo');
+    document.getElementById('uploadArea').innerHTML =
+      '<div class="upload-icon">📷</div>'
+      + '<div class="upload-text">Tap to upload scorecard photo</div>'
+      + '<input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(this)">';
+    renderShooters();
+    updateSubmitBar();
+
+  } catch(e) {
+    syncEl.style.display = 'none';
+    alert('Save failed: ' + e.message);
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Save Round';
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(() => { t.style.display = 'none'; }, 3000);
+}
+</script>
+</body>
+</html>
