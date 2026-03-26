@@ -6,7 +6,7 @@
   "results": [
     {
       "rank": 1,
-      "name": "Parker",
+      "name": "Brennan",
       "color": "#22c55e",
       "hits": 19,
       "pct": 76,
@@ -97,7 +97,7 @@
         ]
       },
       "tiedWith": [
-        "Brennan"
+        "Gavin"
       ],
       "phone": "",
       "team": "Grosse Ile",
@@ -106,7 +106,7 @@
     },
     {
       "rank": 2,
-      "name": "Brennan",
+      "name": "Gavin",
       "color": "#a855f7",
       "hits": 16,
       "pct": 64,
@@ -157,7 +157,7 @@
     },
     {
       "rank": 4,
-      "name": "Gavin",
+      "name": "Sully",
       "color": "#00e5ff",
       "hits": 4,
       "pct": 16,
