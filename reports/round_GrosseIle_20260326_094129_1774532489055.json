@@ -1,0 +1,298 @@
+{
+  "id": 1774532489055,
+  "date": "3/25/2026, 12:00:00 PM",
+  "teamId": "team_1774396719365",
+  "teamName": "Grosse Ile",
+  "manualEntry": true,
+  "results": [
+    {
+      "rank": 1,
+      "name": "Nolan Borg",
+      "color": "#ffd700",
+      "hits": 25,
+      "pct": 100,
+      "stationScores": {
+        "1": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "2": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "3": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "4": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "5": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ]
+      },
+      "missDirections": {},
+      "tiedWith": [],
+      "phone": "7345751570",
+      "team": "Grosse Ile",
+      "teamId": "team_1774396719365",
+      "teamColor": "#e91e63"
+    },
+    {
+      "rank": 2,
+      "name": "Mateo Parisi",
+      "color": "#ff6b35",
+      "hits": 20,
+      "pct": 80,
+      "stationScores": {
+        "1": [
+          true,
+          false,
+          true,
+          true,
+          true
+        ],
+        "2": [
+          false,
+          true,
+          true,
+          true,
+          true
+        ],
+        "3": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "4": [
+          true,
+          true,
+          false,
+          true,
+          false
+        ],
+        "5": [
+          false,
+          true,
+          true,
+          true,
+          true
+        ]
+      },
+      "missDirections": {
+        "2": "UR",
+        "6": "U",
+        "18": "U",
+        "20": "UL",
+        "21": "U"
+      },
+      "tiedWith": [],
+      "phone": "7343043647",
+      "team": "Grosse Ile",
+      "teamId": "team_1774396719365",
+      "teamColor": "#e91e63"
+    },
+    {
+      "rank": 3,
+      "name": "Nathan",
+      "color": "#ff3355",
+      "hits": 19,
+      "pct": 76,
+      "stationScores": {
+        "1": [
+          false,
+          false,
+          true,
+          true,
+          true
+        ],
+        "2": [
+          true,
+          true,
+          true,
+          false,
+          true
+        ],
+        "3": [
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "4": [
+          true,
+          false,
+          false,
+          true,
+          true
+        ],
+        "5": [
+          true,
+          true,
+          false,
+          true,
+          true
+        ]
+      },
+      "missDirections": {
+        "1": "UL",
+        "2": "U",
+        "9": "U",
+        "17": "UL",
+        "18": "UR",
+        "23": "U"
+      },
+      "tiedWith": [],
+      "phone": "",
+      "team": "Grosse Ile",
+      "teamId": "team_1774396719365",
+      "teamColor": "#e91e63"
+    },
+    {
+      "rank": 4,
+      "name": "Joe",
+      "color": "#00ff88",
+      "hits": 15,
+      "pct": 60,
+      "stationScores": {
+        "1": [
+          true,
+          false,
+          true,
+          false,
+          true
+        ],
+        "2": [
+          true,
+          false,
+          false,
+          false,
+          false
+        ],
+        "3": [
+          false,
+          true,
+          true,
+          true,
+          true
+        ],
+        "4": [
+          true,
+          true,
+          false,
+          false,
+          true
+        ],
+        "5": [
+          true,
+          true,
+          false,
+          true,
+          true
+        ]
+      },
+      "missDirections": {
+        "2": "UL",
+        "4": "UL",
+        "7": "UR",
+        "8": "U",
+        "9": "U",
+        "10": "U",
+        "11": "U",
+        "18": "U",
+        "19": "U",
+        "23": "U"
+      },
+      "tiedWith": [],
+      "phone": "",
+      "team": "Grosse Ile",
+      "teamId": "team_1774396719365",
+      "teamColor": "#e91e63"
+    },
+    {
+      "rank": 5,
+      "name": "Luke Donnelly",
+      "color": "#00e5ff",
+      "hits": 13,
+      "pct": 52,
+      "stationScores": {
+        "1": [
+          true,
+          false,
+          true,
+          false,
+          true
+        ],
+        "2": [
+          false,
+          false,
+          false,
+          true,
+          false
+        ],
+        "3": [
+          false,
+          false,
+          false,
+          true,
+          true
+        ],
+        "4": [
+          true,
+          false,
+          true,
+          true,
+          true
+        ],
+        "5": [
+          false,
+          true,
+          true,
+          false,
+          true
+        ]
+      },
+      "missDirections": {
+        "2": "U",
+        "4": "U",
+        "6": "UL",
+        "7": "UL",
+        "8": "UL",
+        "10": "U",
+        "11": "UL",
+        "12": "UL",
+        "13": "U",
+        "17": "U",
+        "21": "U",
+        "24": "UL"
+      },
+      "tiedWith": [],
+      "phone": "",
+      "team": "Grosse Ile",
+      "teamId": "team_1774396719365",
+      "teamColor": "#e91e63"
+    }
+  ],
+  "hasTie": false,
+  "shooterCount": 5
+}
