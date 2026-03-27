@@ -204,7 +204,7 @@ header{position:relative;z-index:1;display:flex;align-items:center;justify-conte
     <div class="panel-title" style="margin-top:20px">📷 Vision AI — Scorecard Reader</div>
     <div class="upload-area" id="uploadArea" onclick="document.getElementById('photoInput').click()">
       <div class="upload-icon">📸</div>
-      <div class="upload-text">Tap to photograph scorecard — AI will read hits, misses &amp; directions</div>
+      <div class="upload-text">Tap to take photo or choose from library — AI will read hits, misses &amp; directions</div>
       <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="handlePhoto(this)">
     </div>
     <button class="ai-scan-btn" id="aiScanBtn" onclick="runVisionAI()" disabled>
@@ -452,99 +452,102 @@ function handlePhoto(input) {
   reader.readAsDataURL(file);
 }
 
-// ── VISION AI ──
+// ── VISION AI (agentic, via Worker) ──────────
 async function runVisionAI() {
   if (!uploadedPhoto) return;
 
-  // Build shooter name list for the prompt
-  const nameList = shooterRows.length > 0
-    ? shooterRows.map((s, i) => (i + 1) + '. ' + s.name).join('\n')
-    : 'Names are written on the scorecard — read them directly.';
+  const shooterNames = shooterRows.map(s => s.name);
 
-  // Open modal in loading state
+  // Strip data-URL prefix
+  const [meta, base64Data] = uploadedPhoto.split(',');
+  const mediaType = meta.match(/data:(.*);base64/)[1];
+
+  // Open modal with live progress log
   document.getElementById('visionOverlay').classList.add('active');
   document.getElementById('visionActions').style.display = 'none';
   document.getElementById('visionBody').innerHTML = `
     <div class="ai-loading">
       <div class="ai-loading-icon">🤖</div>
-      <div class="ai-loading-text">READING SCORECARD...</div>
-      <div class="ai-loading-sub">Analyzing shot positions, hits and miss directions</div>
+      <div class="ai-loading-text">AGENTIC SCAN RUNNING</div>
+      <div class="ai-loading-sub" id="aiProgressSub">Sending scorecard to agent...</div>
+      <div id="aiLog" style="margin-top:20px;text-align:left;max-width:420px;margin-left:auto;margin-right:auto"></div>
     </div>`;
 
-  // Strip data-URL prefix to get raw base64 + media type
-  const [meta, base64Data] = uploadedPhoto.split(',');
-  const mediaType = meta.match(/data:(.*);base64/)[1];
+  function logStep(icon, text, color) {
+    const log = document.getElementById('aiLog');
+    if (!log) return;
+    const line = document.createElement('div');
+    line.style.cssText = 'font-family:Share Tech Mono,monospace;font-size:11px;padding:4px 0;color:' + (color||'var(--dim)') + ';display:flex;gap:8px;align-items:flex-start';
+    line.innerHTML = '<span>' + icon + '</span><span>' + text + '</span>';
+    log.appendChild(line);
+    log.scrollTop = log.scrollHeight;
+  }
 
-  const prompt = `You are reading a USA Clay Target League TRAP scorecard photo.
-
-The scorecard has these shooters listed in order (top to bottom):
-${nameList}
-
-For each shooter there are TWO rows: Round 1 (top) and Round 2 (bottom).
-Each row has 25 shot columns (stations 1-5, 5 shots each, left to right).
-
-Scoring marks:
-- "/" (forward slash) = HIT
-- "O" or circle with a small line/arrow = MISS. The line direction on the O indicates where the target went: read it as U (up), D (down), L (left), R (right), UL, UR, DL, DR. If no direction visible, use "U" as default.
-- Empty cell = unmarked
-
-Return ONLY valid JSON in this exact structure, no markdown, no explanation:
-{
-  "shooters": [
-    {
-      "name": "shooter name as written",
-      "round1": [
-        {"station": 1, "shots": [
-          {"shotNum": 1, "hit": true},
-          {"shotNum": 2, "hit": false, "missDir": "L"},
-          ...5 shots total
-        ]},
-        ...stations 2-5
-      ],
-      "round2": [ ...same structure... ]
-    }
-  ]
-}
-
-Important:
-- Preserve shooter order exactly as they appear top to bottom on the card
-- Each station must have exactly 5 shots
-- missDir must be one of: U, D, L, R, UL, UR, DL, DR
-- If a cell is empty/unmarked, use {"shotNum": N, "hit": null}`;
+  function setSubtitle(t) {
+    const el = document.getElementById('aiProgressSub');
+    if (el) el.textContent = t;
+  }
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    logStep('📡', 'Connecting to ClayAI worker...', 'var(--dim)');
+    setSubtitle('Pass 1 — Reading full scorecard...');
+
+    const res = await fetch(WORKER_URL + '/scan-scorecard', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 4000,
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64Data } },
-            { type: 'text', text: prompt }
-          ]
-        }]
-      })
+      body: JSON.stringify({ imageBase64: base64Data, mediaType, shooterNames }),
     });
 
-    if (!response.ok) throw new Error('API error ' + response.status);
-    const data = await response.json();
-    const raw = data.content.map(b => b.text || '').join('');
-    // Strip any accidental markdown fences
-    const clean = raw.replace(/```json|```/g, '').trim();
-    visionResults = JSON.parse(clean);
-    renderVisionReview();
+    if (!res.ok) {
+      const errText = await res.text();
+      let errMsg = 'Worker error ' + res.status;
+      try { errMsg = JSON.parse(errText).error || errMsg; } catch {}
+      // Special guidance for missing API key
+      if (res.status === 500 && errMsg.includes('ANTHROPIC_API_KEY')) {
+        throw new Error('ANTHROPIC_API_KEY not set in Worker. Go to Cloudflare dashboard → Workers → your worker → Settings → Variables → add ANTHROPIC_API_KEY as an encrypted secret.');
+      }
+      throw new Error(errMsg);
+    }
+
+    const result = await res.json();
+    if (result.error) throw new Error(result.error);
+
+    logStep('✓', 'Pass 1 complete — initial scorecard read', 'var(--hit)');
+
+    if (result.uncertainCount > 0) {
+      logStep('🔍', 'Pass 2 — Re-examining ' + result.uncertainCount + ' uncertain shots...', 'var(--warn)');
+      logStep('✓', 'Pass 2 complete — corrections applied', 'var(--hit)');
+    } else {
+      logStep('✓', 'Pass 2 — No uncertain shots, skipped', 'var(--dim)');
+    }
+
+    logStep('📊', 'Pass 3 — Cross-checking totals against card...', 'var(--accent)');
+
+    if (result.warnings && result.warnings.length > 0) {
+      result.warnings.forEach(w => {
+        logStep('⚠', w.message + ' (card says ' + w.cardSays + ', I read ' + w.myCount + ')', 'var(--warn)');
+      });
+    } else {
+      logStep('✓', 'Pass 3 — All totals match card!', 'var(--hit)');
+    }
+
+    logStep('🎯', 'Scan complete. ' + (result.shooters||[]).length + ' shooters read.', 'var(--accent)');
+    setSubtitle('Review results below — tap any shot to correct it');
+
+    visionResults = result;
+
+    // Short pause so user can read the log, then show review
+    await new Promise(r => setTimeout(r, 1200));
+    renderVisionReview(result.warnings);
 
   } catch(e) {
     document.getElementById('visionBody').innerHTML =
-      '<div class="ai-error">⚠ AI scan failed: ' + e.message + '<br><br>Try a clearer photo or enter scores manually.</div>';
+      '<div class="ai-error" style="white-space:pre-wrap">⚠ Scan failed:\n\n' + e.message + '</div>';
   }
 }
 
 // ── Render Vision Review ──
-function renderVisionReview() {
+function renderVisionReview(warnings) {
   const body = document.getElementById('visionBody');
 
   if (!visionResults || !visionResults.shooters || !visionResults.shooters.length) {
@@ -558,6 +561,14 @@ function renderVisionReview() {
     Miss = <span style="color:var(--miss)">○ red with direction</span> &nbsp;|&nbsp;
     <span style="color:var(--warn)">Orange = unmarked/uncertain</span>
   </div>`;
+
+  // Show warnings from pass 3 cross-check
+  if (warnings && warnings.length > 0) {
+    html += '<div class="vision-note" style="border-color:rgba(255,140,0,0.3);background:rgba(255,140,0,0.05)">'
+      + '<strong style="color:var(--warn)">⚠ Total Mismatches Detected</strong><br>'
+      + warnings.map(w => `${w.name} ${w.round}: card says <strong style="color:var(--warn)">${w.cardSays}</strong>, AI read <strong style="color:var(--miss)">${w.myCount}</strong> — ${w.message}`).join('<br>')
+      + '</div>';
+  }
 
   visionResults.shooters.forEach((shooter, si) => {
     const color = COLORS[si % COLORS.length];
@@ -873,8 +884,8 @@ async function saveRound() {
     document.getElementById('uploadArea').classList.remove('has-photo');
     document.getElementById('uploadArea').innerHTML =
       '<div class="upload-icon">📸</div>'
-      + '<div class="upload-text">Tap to photograph scorecard — AI will read hits, misses &amp; directions</div>'
-      + '<input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(this)">';
+      + '<div class="upload-text">Tap to take photo or choose from library</div>'
+      + '<input type="file" id="photoInput" accept="image/*" style="display:none" onchange="handlePhoto(this)">';
     renderShooters();
     updateSubmitBar();
 
