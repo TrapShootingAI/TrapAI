@@ -16,6 +16,14 @@
     "teamColor": "#00e5ff"
   },
   {
+    "name": "Giovanni Parisi",
+    "phone": "",
+    "email": "",
+    "team": "Parisi Family",
+    "teamId": "team_default",
+    "teamColor": "#00e5ff"
+  },
+  {
     "name": "Mateo Parisi",
     "phone": "7343043647",
     "email": "",
@@ -81,6 +89,14 @@
   },
   {
     "name": "Parker",
+    "phone": "",
+    "email": "",
+    "team": "Grosse Ile",
+    "teamId": "team_1774396719365",
+    "teamColor": "#e91e63"
+  },
+  {
+    "name": "Sully",
     "phone": "",
     "email": "",
     "team": "Grosse Ile",
