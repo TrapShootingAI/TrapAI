@@ -524,7 +524,7 @@ async function runVisionAI() {
 
   try {
     logStep('📡', 'Connecting to ClayAI worker...', 'var(--dim)');
-    setSubtitle('Pass 1 — Reading full scorecard...');
+    setSubtitle('Pass 1 — Analyzing card layout & marks...');
 
     const res = await fetch(WORKER_URL + '/scan-scorecard', {
       method: 'POST',
@@ -546,23 +546,25 @@ async function runVisionAI() {
     const result = await res.json();
     if (result.error) throw new Error(result.error);
 
-    logStep('✓', 'Pass 1 complete — initial scorecard read', 'var(--hit)');
+    logStep('✓', 'Pass 1 — Card analyzed (layout, marks, names)', 'var(--hit)');
+    logStep('✓', 'Pass 2 — Structured extraction complete', 'var(--hit)');
 
     if (result.uncertainCount > 0) {
-      logStep('🔍', 'Pass 2 — Re-examining ' + result.uncertainCount + ' uncertain shots...', 'var(--warn)');
-      logStep('✓', 'Pass 2 complete — corrections applied', 'var(--hit)');
+      logStep('🔍', 'Pass 3 — Verified totals + re-examined ' + result.uncertainCount + ' uncertain shots', 'var(--warn)');
     } else {
-      logStep('✓', 'Pass 2 — No uncertain shots, skipped', 'var(--dim)');
+      logStep('✓', 'Pass 3 — Totals verified, no uncertain shots', 'var(--hit)');
     }
 
-    logStep('📊', 'Pass 3 — Cross-checking totals against card...', 'var(--accent)');
+    if (result.correctionCount > 0) {
+      logStep('🔧', result.correctionCount + ' shot(s) corrected during verification', 'var(--accent)');
+    }
 
     if (result.warnings && result.warnings.length > 0) {
       result.warnings.forEach(w => {
-        logStep('⚠', w.message + ' (card says ' + w.cardSays + ', I read ' + w.myCount + ')', 'var(--warn)');
+        logStep('⚠', w.message + ' (card says ' + w.cardSays + ', AI read ' + w.myCount + ')', 'var(--warn)');
       });
     } else {
-      logStep('✓', 'Pass 3 — All totals match card!', 'var(--hit)');
+      logStep('✓', 'All totals match card!', 'var(--hit)');
     }
 
     logStep('🎯', 'Scan complete. ' + (result.shooters||[]).length + ' shooters read.', 'var(--accent)');
