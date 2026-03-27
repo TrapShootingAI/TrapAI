@@ -435,21 +435,55 @@ function cancelDir() {
   document.getElementById('dirOverlay').classList.remove('active');
 }
 
-// ── Photo upload ──
+// ── Photo upload (with client-side compression for Anthropic 5MB limit) ──
 function handlePhoto(input) {
   const file = input.files[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    uploadedPhoto = e.target.result;
+
+  compressForAPI(file).then(dataUrl => {
+    uploadedPhoto = dataUrl;
     const area = document.getElementById('uploadArea');
     area.classList.add('has-photo');
     area.innerHTML = '<img class="upload-preview" src="' + uploadedPhoto + '">'
       + '<div class="upload-text" style="margin-top:8px">Tap to change photo</div>'
       + '<input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(this)">';
     document.getElementById('aiScanBtn').disabled = false;
-  };
-  reader.readAsDataURL(file);
+  }).catch(e => {
+    alert('Could not process image: ' + e.message);
+  });
+}
+
+// Resize & compress to JPEG so base64 payload stays under Anthropic's 5MB limit.
+// Runs entirely in the browser via canvas — no server roundtrip.
+async function compressForAPI(file, maxBytes = 4500000) {
+  const bitmap = await createImageBitmap(file);
+  let w = bitmap.width, h = bitmap.height;
+
+  // Scale longest edge to 2048 max (plenty of detail for scorecard reading)
+  const MAX_DIM = 2048;
+  if (w > MAX_DIM || h > MAX_DIM) {
+    const scale = MAX_DIM / Math.max(w, h);
+    w = Math.round(w * scale);
+    h = Math.round(h * scale);
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  canvas.getContext('2d').drawImage(bitmap, 0, 0, w, h);
+
+  // Try decreasing quality until under maxBytes
+  let quality = 0.92;
+  let dataUrl;
+  do {
+    dataUrl = canvas.toDataURL('image/jpeg', quality);
+    const b64Len = dataUrl.split(',')[1].length;
+    const bytes = Math.ceil(b64Len * 3 / 4);
+    if (bytes <= maxBytes) break;
+    quality -= 0.08;
+  } while (quality > 0.3);
+
+  return dataUrl;
 }
 
 // ── VISION AI (agentic, via Worker) ──────────
