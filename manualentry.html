@@ -205,7 +205,7 @@ header{position:relative;z-index:1;display:flex;align-items:center;justify-conte
     <div class="upload-area" id="uploadArea" onclick="document.getElementById('photoInput').click()">
       <div class="upload-icon">📸</div>
       <div class="upload-text">Tap to photograph scorecard — AI will read hits, misses &amp; directions</div>
-      <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(this)">
+      <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="handlePhoto(this)">
     </div>
     <button class="ai-scan-btn" id="aiScanBtn" onclick="runVisionAI()" disabled>
       <span>🤖</span> Scan Scorecard with AI
