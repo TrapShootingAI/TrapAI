@@ -1,0 +1,826 @@
+{
+  "id": 1776611456909,
+  "date": "4/8/2026, 12:00:00 PM",
+  "teamId": "team_1774396719365",
+  "teamName": "Grosse Ile",
+  "manualEntry": true,
+  "results": [
+    {
+      "rank": 2,
+      "name": "Mateo Parisi",
+      "color": "#ff6b35",
+      "hits": 0,
+      "pct": 0,
+      "stationScores": {
+        "1": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "2": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "3": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "4": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "5": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "missDirections": {},
+      "tiedWith": [
+        "Nolan Borg",
+        "Luke Donnelly",
+        "Nathan",
+        "Joe",
+        "Stella",
+        "Brennan",
+        "Parker",
+        "Sully",
+        "Collin",
+        "Jockson",
+        "Jonathan"
+      ],
+      "phone": "7343043647",
+      "team": "Grosse Ile",
+      "teamId": "team_1774396719365",
+      "teamColor": "#e91e63"
+    },
+    {
+      "rank": 2,
+      "name": "Nolan Borg",
+      "color": "#ffd700",
+      "hits": 0,
+      "pct": 0,
+      "stationScores": {
+        "1": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "2": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "3": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "4": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "5": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "missDirections": {},
+      "tiedWith": [
+        "Mateo Parisi",
+        "Luke Donnelly",
+        "Nathan",
+        "Joe",
+        "Stella",
+        "Brennan",
+        "Parker",
+        "Sully",
+        "Collin",
+        "Jockson",
+        "Jonathan"
+      ],
+      "phone": "7345751570",
+      "team": "Grosse Ile",
+      "teamId": "team_1774396719365",
+      "teamColor": "#e91e63"
+    },
+    {
+      "rank": 2,
+      "name": "Luke Donnelly",
+      "color": "#00e5ff",
+      "hits": 0,
+      "pct": 0,
+      "stationScores": {
+        "1": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "2": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "3": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "4": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "5": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "missDirections": {},
+      "tiedWith": [
+        "Mateo Parisi",
+        "Nolan Borg",
+        "Nathan",
+        "Joe",
+        "Stella",
+        "Brennan",
+        "Parker",
+        "Sully",
+        "Collin",
+        "Jockson",
+        "Jonathan"
+      ],
+      "phone": "",
+      "team": "Grosse Ile",
+      "teamId": "team_1774396719365",
+      "teamColor": "#e91e63"
+    },
+    {
+      "rank": 2,
+      "name": "Nathan",
+      "color": "#ff3355",
+      "hits": 0,
+      "pct": 0,
+      "stationScores": {
+        "1": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "2": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "3": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "4": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "5": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "missDirections": {},
+      "tiedWith": [
+        "Mateo Parisi",
+        "Nolan Borg",
+        "Luke Donnelly",
+        "Joe",
+        "Stella",
+        "Brennan",
+        "Parker",
+        "Sully",
+        "Collin",
+        "Jockson",
+        "Jonathan"
+      ],
+      "phone": "",
+      "team": "Grosse Ile",
+      "teamId": "team_1774396719365",
+      "teamColor": "#e91e63"
+    },
+    {
+      "rank": 2,
+      "name": "Joe",
+      "color": "#00ff88",
+      "hits": 0,
+      "pct": 0,
+      "stationScores": {
+        "1": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "2": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "3": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "4": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "5": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "missDirections": {},
+      "tiedWith": [
+        "Mateo Parisi",
+        "Nolan Borg",
+        "Luke Donnelly",
+        "Nathan",
+        "Stella",
+        "Brennan",
+        "Parker",
+        "Sully",
+        "Collin",
+        "Jockson",
+        "Jonathan"
+      ],
+      "phone": "",
+      "team": "Grosse Ile",
+      "teamId": "team_1774396719365",
+      "teamColor": "#e91e63"
+    },
+    {
+      "rank": 1,
+      "name": "Gavin",
+      "color": "#ff6b35",
+      "hits": 5,
+      "pct": 20,
+      "stationScores": {
+        "1": [
+          false,
+          false,
+          true,
+          false,
+          false
+        ],
+        "2": [
+          false,
+          false,
+          false,
+          false,
+          true
+        ],
+        "3": [
+          false,
+          false,
+          false,
+          false,
+          true
+        ],
+        "4": [
+          false,
+          false,
+          false,
+          true,
+          false
+        ],
+        "5": [
+          false,
+          false,
+          false,
+          true,
+          false
+        ]
+      },
+      "missDirections": {
+        "1": "U",
+        "2": "U",
+        "4": "U",
+        "5": "U",
+        "6": "U",
+        "7": "U",
+        "8": "U",
+        "9": "U",
+        "11": "U",
+        "12": "U",
+        "13": "U",
+        "14": "U",
+        "16": "U",
+        "17": "U",
+        "18": "U",
+        "20": "U",
+        "21": "U",
+        "22": "U",
+        "23": "U",
+        "25": "U"
+      },
+      "tiedWith": [],
+      "phone": "",
+      "team": "Grosse Ile",
+      "teamId": "team_1774396719365",
+      "teamColor": "#e91e63"
+    },
+    {
+      "rank": 2,
+      "name": "Stella",
+      "color": "#ffd700",
+      "hits": 0,
+      "pct": 0,
+      "stationScores": {
+        "1": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "2": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "3": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "4": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "5": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "missDirections": {},
+      "tiedWith": [
+        "Mateo Parisi",
+        "Nolan Borg",
+        "Luke Donnelly",
+        "Nathan",
+        "Joe",
+        "Brennan",
+        "Parker",
+        "Sully",
+        "Collin",
+        "Jockson",
+        "Jonathan"
+      ],
+      "phone": "",
+      "team": "Grosse Ile",
+      "teamId": "team_1774396719365",
+      "teamColor": "#e91e63"
+    },
+    {
+      "rank": 2,
+      "name": "Brennan",
+      "color": "#00e5ff",
+      "hits": 0,
+      "pct": 0,
+      "stationScores": {
+        "1": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "2": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "3": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "4": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "5": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "missDirections": {},
+      "tiedWith": [
+        "Mateo Parisi",
+        "Nolan Borg",
+        "Luke Donnelly",
+        "Nathan",
+        "Joe",
+        "Stella",
+        "Parker",
+        "Sully",
+        "Collin",
+        "Jockson",
+        "Jonathan"
+      ],
+      "phone": "",
+      "team": "Grosse Ile",
+      "teamId": "team_1774396719365",
+      "teamColor": "#e91e63"
+    },
+    {
+      "rank": 2,
+      "name": "Parker",
+      "color": "#ff3355",
+      "hits": 0,
+      "pct": 0,
+      "stationScores": {
+        "1": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "2": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "3": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "4": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "5": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "missDirections": {},
+      "tiedWith": [
+        "Mateo Parisi",
+        "Nolan Borg",
+        "Luke Donnelly",
+        "Nathan",
+        "Joe",
+        "Stella",
+        "Brennan",
+        "Sully",
+        "Collin",
+        "Jockson",
+        "Jonathan"
+      ],
+      "phone": "",
+      "team": "Grosse Ile",
+      "teamId": "team_1774396719365",
+      "teamColor": "#e91e63"
+    },
+    {
+      "rank": 2,
+      "name": "Sully",
+      "color": "#00ff88",
+      "hits": 0,
+      "pct": 0,
+      "stationScores": {
+        "1": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "2": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "3": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "4": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "5": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "missDirections": {},
+      "tiedWith": [
+        "Mateo Parisi",
+        "Nolan Borg",
+        "Luke Donnelly",
+        "Nathan",
+        "Joe",
+        "Stella",
+        "Brennan",
+        "Parker",
+        "Collin",
+        "Jockson",
+        "Jonathan"
+      ],
+      "phone": "",
+      "team": "Grosse Ile",
+      "teamId": "team_1774396719365",
+      "teamColor": "#e91e63"
+    },
+    {
+      "rank": 2,
+      "name": "Collin",
+      "color": "#ff6b35",
+      "hits": 0,
+      "pct": 0,
+      "stationScores": {
+        "1": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "2": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "3": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "4": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "5": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "missDirections": {},
+      "tiedWith": [
+        "Mateo Parisi",
+        "Nolan Borg",
+        "Luke Donnelly",
+        "Nathan",
+        "Joe",
+        "Stella",
+        "Brennan",
+        "Parker",
+        "Sully",
+        "Jockson",
+        "Jonathan"
+      ],
+      "phone": "",
+      "team": "Grosse Ile",
+      "teamId": "team_1774396719365",
+      "teamColor": "#e91e63"
+    },
+    {
+      "rank": 2,
+      "name": "Jockson",
+      "color": "#ffd700",
+      "hits": 0,
+      "pct": 0,
+      "stationScores": {
+        "1": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "2": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "3": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "4": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "5": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "missDirections": {},
+      "tiedWith": [
+        "Mateo Parisi",
+        "Nolan Borg",
+        "Luke Donnelly",
+        "Nathan",
+        "Joe",
+        "Stella",
+        "Brennan",
+        "Parker",
+        "Sully",
+        "Collin",
+        "Jonathan"
+      ],
+      "phone": "",
+      "team": "Grosse Ile",
+      "teamId": "team_1774396719365",
+      "teamColor": "#e91e63"
+    },
+    {
+      "rank": 2,
+      "name": "Jonathan",
+      "color": "#00e5ff",
+      "hits": 0,
+      "pct": 0,
+      "stationScores": {
+        "1": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "2": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "3": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "4": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "5": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "missDirections": {},
+      "tiedWith": [
+        "Mateo Parisi",
+        "Nolan Borg",
+        "Luke Donnelly",
+        "Nathan",
+        "Joe",
+        "Stella",
+        "Brennan",
+        "Parker",
+        "Sully",
+        "Collin",
+        "Jockson"
+      ],
+      "phone": "",
+      "team": "Grosse Ile",
+      "teamId": "team_1774396719365",
+      "teamColor": "#e91e63"
+    }
+  ],
+  "hasTie": true,
+  "shooterCount": 13
+}
